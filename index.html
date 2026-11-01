@@ -228,7 +228,14 @@ main{flex:1;min-height:0;display:flex}
   .price span{font-size:13px}
   .price span.rng{font-size:10px}
 }
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.items{transition:transform .12s ease-in,opacity .12s ease-in}
+.items.out-l{transform:translateX(-40px);opacity:0}
+.items.out-r{transform:translateX(40px);opacity:0}
+@keyframes inL{from{transform:translateX(56px);opacity:0}to{transform:none;opacity:1}}
+@keyframes inR{from{transform:translateX(-56px);opacity:0}to{transform:none;opacity:1}}
+.items.in-l{animation:inL .24s cubic-bezier(.2,.8,.2,1)}
+.items.in-r{animation:inR .24s cubic-bezier(.2,.8,.2,1)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
@@ -567,11 +574,13 @@ function render(){
   var sig = S.tab + (S.cat || '') + (S.edCat || '');
   lastSig = sig; lastTab = S.tab;
   var wantReveal = S.reveal; S.reveal = false;
+  var wantAnim = S.anim; S.anim = null;
   app.innerHTML = vHeader() + '<main>' + body + '</main>' + vSheets();
   SCROLLERS.forEach(function(s){
     var e = document.querySelector(s), k = keep[s];
     if (e && k && (k[0] === sig || (KEEPALWAYS.indexOf(s) >= 0 && k[3] === S.tab))){ e.scrollTop = k[1]; e.scrollLeft = k[2]; }
   });
+  if (wantAnim){ var itl = document.querySelector('.items'); if (itl) itl.classList.add('in-' + wantAnim); }
   if (wantReveal){
     var rl = document.querySelector('.rail'), ac = rl && rl.querySelector('[aria-pressed="true"]');
     if (ac){ rl.scrollLeft = ac.offsetLeft - (rl.clientWidth - ac.offsetWidth) / 2; rl.scrollTop = ac.offsetTop - (rl.clientHeight - ac.offsetHeight) / 2; }
@@ -651,7 +660,10 @@ document.addEventListener('click', function(e){
   var a = el.dataset.act, d = el.dataset, c;
   switch (a){
     case 'tab': S.cancelAsk = null; S.tab = d.v; S.clearAsk = false; S.del = null; S.resetAsk = false; if (d.v !== 'menu') S.pinErr = false; break;
-    case 'cat': S.cat = d.id; break;
+    case 'cat':
+      var oi = menu.map(function(m){ return m.id; }).indexOf(curCat().id), ni = menu.map(function(m){ return m.id; }).indexOf(d.id);
+      if (ni !== oi) S.anim = ni > oi ? 'l' : 'r';
+      S.cat = d.id; break;
     case 'tdec':
       c = curCat(); var nm = byId(c.items, d.id).name;
       var ls = S.cart.filter(function(l){ return l.cat === c.name && l.name === nm; });
@@ -753,8 +765,17 @@ document.addEventListener('touchend', function(e){
   if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
   var i = menu.map(function(c){ return c.id; }).indexOf(curCat().id), n = i + (dx < 0 ? 1 : -1);
   if (n < 0 || n >= menu.length) return;
-  S.cat = menu[n].id; S.reveal = true; render(); toast(menu[n].name);
+  goCat(n, dx < 0 ? 'l' : 'r');
 }, {passive:true});
+var busy = false;
+function goCat(n, dir){
+  if (busy) return;
+  var go = function(){ busy = false; S.cat = menu[n].id; S.anim = dir; S.reveal = true; render(); toast(menu[n].name); };
+  var itl = document.querySelector('.items');
+  if (itl && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)){
+    busy = true; itl.classList.add('out-' + dir); setTimeout(go, 110);
+  } else go();
+}
 S.cat = menu[0].id; S.edCat = menu[0].id;
 render();
 </script>
