@@ -9,3 +9,9 @@ Single-file web app (`index.html`) for taking car-side orders on an Android tabl
 - Data is saved in the browser on the device only
 
 Open `index.html` in Chrome and use "Add to Home screen".
+
+## Android APK
+
+Every push to `main` builds an APK with GitHub Actions (Capacitor, debug-signed).
+Download `hollywood-orders.apk` from the **Releases** page (release `apk-latest`), or from the workflow run's Artifacts.
+On the tablet, allow "Install unknown apps" for the browser, open the file and install.
