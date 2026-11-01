@@ -592,7 +592,6 @@ function addLine(c, item, size){
   var label = size.label, price = priceOf(item, size);
   var f = S.cart.filter(function(l){ return l.cat === c.name && l.name === item.name && l.size === label && l.price === price; })[0];
   if (f) f.qty++; else S.cart.push({cat:c.name, name:item.name, size:label, price:price, qty:1});
-  toast('Added ' + (label ? label + ' ' : '') + item.name);
 }
 function summaryText(){
   return 'Hollywood Ice Creams - to enter\n' + totals().map(function(g){
@@ -770,7 +769,7 @@ document.addEventListener('touchend', function(e){
 var busy = false;
 function goCat(n, dir){
   if (busy) return;
-  var go = function(){ busy = false; S.cat = menu[n].id; S.anim = dir; S.reveal = true; render(); toast(menu[n].name); };
+  var go = function(){ busy = false; S.cat = menu[n].id; S.anim = dir; S.reveal = true; render(); };
   var itl = document.querySelector('.items');
   if (itl && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)){
     busy = true; itl.classList.add('out-' + dir); setTimeout(go, 110);
