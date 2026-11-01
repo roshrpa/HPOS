@@ -546,18 +546,18 @@ function vSheets(){
   return '';
 }
 
-var lastSig = '';
-var SCROLLERS = ['.items', '.rail', '.lines', '.page', '.ed .main', '.ed .list', '.sheet'];
+var lastSig = '', lastTab = '', KEEPALWAYS = ['.rail', '.ed .list', 'nav.tabs'];
+var SCROLLERS = ['nav.tabs', '.items', '.rail', '.lines', '.page', '.ed .main', '.ed .list', '.sheet'];
 function render(){
   var app = document.getElementById('app'), keep = {};
-  SCROLLERS.forEach(function(s){ var e = document.querySelector(s); if (e) keep[s] = [lastSig, e.scrollTop, e.scrollLeft]; });
+  SCROLLERS.forEach(function(s){ var e = document.querySelector(s); if (e) keep[s] = [lastSig, e.scrollTop, e.scrollLeft, lastTab]; });
   var body = S.tab==='new' ? vNew() : S.tab==='orders' ? vOrders() : S.tab==='totals' ? vTotals() : vMenu();
   var sig = S.tab + (S.cat || '') + (S.edCat || '');
-  lastSig = sig;
+  lastSig = sig; lastTab = S.tab;
   app.innerHTML = vHeader() + '<main>' + body + '</main>' + vSheets();
   SCROLLERS.forEach(function(s){
     var e = document.querySelector(s), k = keep[s];
-    if (e && k && k[0] === sig){ e.scrollTop = k[1]; e.scrollLeft = k[2]; }
+    if (e && k && (k[0] === sig || (KEEPALWAYS.indexOf(s) >= 0 && k[3] === S.tab))){ e.scrollTop = k[1]; e.scrollLeft = k[2]; }
   });
 }
 
