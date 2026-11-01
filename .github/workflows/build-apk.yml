@@ -42,18 +42,31 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
 
+      - name: Sign APK with the fixed Hollywood key
+        env:
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KS_PASS" ]; then
+            echo "Secret KEYSTORE_PASSWORD is missing. Add it in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" sign --ks signing/hollywood.jks --ks-key-alias hollywood \
+            --ks-pass env:KS_PASS --key-pass env:KS_PASS \
+            --out hollywood-orders.apk android/app/build/outputs/apk/debug/app-debug.apk
+          "$BT/apksigner" verify --print-certs hollywood-orders.apk | head -3
+
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: hollywood-orders-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: hollywood-orders.apk
 
       - name: Publish APK as a release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp android/app/build/outputs/apk/debug/app-debug.apk hollywood-orders.apk
           gh release delete apk-latest --yes --cleanup-tag || true
           gh release create apk-latest hollywood-orders.apk \
             --title "Hollywood Orders (latest APK)" \
-            --notes "Download hollywood-orders.apk on the Android tablet and install it."
+            --notes "Download hollywood-orders.apk on the Android tablet and install it. Updates install over the old version."
