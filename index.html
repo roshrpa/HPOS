@@ -53,19 +53,19 @@ main{flex:1;min-height:0;display:flex}
 .menu{display:flex;flex-direction:column;min-height:0;min-width:0}
 .menu h2{margin:0;padding:14px 18px 4px;font-size:22px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
 .menu h2 .ar{font-size:18px;color:var(--plum)}
-.items{flex:1;overflow-y:auto;padding:8px 14px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:12px;align-content:start;grid-auto-rows:max-content}
+.items{flex:1;overflow-y:auto;padding:8px 14px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:10px;align-content:start;grid-auto-rows:max-content}
 .item{position:relative;background:var(--card);border-radius:18px;overflow:hidden;text-align:left;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(28,26,31,.1)}
 .item:active{transform:scale(.97)}
 .item .pic{aspect-ratio:4/3;background:#f3e4ea;display:grid;place-items:center;font-size:40px;font-weight:700;color:#d9a3b6;overflow:hidden}
 .item .pic img{width:100%;height:100%;object-fit:cover}
-.item .body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:2px}
-.item b{font-weight:600;font-size:16px;line-height:1.2}
+.item .body{padding:8px 10px 10px;display:flex;flex-direction:column;gap:2px}
+.item b{font-weight:600;font-size:15px;line-height:1.2}
 .item .ar{font-size:14px;color:var(--muted);text-align:right}
 .item .desc{font-size:12px;color:var(--muted);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.price{position:absolute;top:8px;right:8px;width:54px;height:54px;border-radius:50%;background:var(--pink);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,.25)}
-.price small{font-size:9px;font-weight:600;letter-spacing:.4px}
-.price span{font-size:17px;margin-top:2px}
-.price span.rng{font-size:12px}
+.price{position:absolute;top:6px;right:6px;width:44px;height:44px;border-radius:50%;background:var(--pink);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.price small{font-size:8px;font-weight:600;letter-spacing:.4px}
+.price span{font-size:15px;margin-top:1px}
+.price span.rng{font-size:11px}
 .tag{position:absolute;top:8px;left:8px;background:var(--plum);color:#fff;font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px}
 .item.off{opacity:.5;pointer-events:none}
 .cell{position:relative;display:flex}
@@ -209,12 +209,24 @@ main{flex:1;min-height:0;display:flex}
   .panel.open .lines,.panel.open #note{display:block}
   .panel.open .foot .link{display:block}
   .panel.open h2::after{content:'\25BC Close'}
-  .items{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:6px 10px 16px}
+  .items{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:6px 8px 16px}
+  .item b{font-size:13px}
+  .item .ar{font-size:12px}
+  .item .body{padding:6px 8px 8px}
+  .item .body .desc{display:none}
+  .cell.has .body{padding-bottom:50px}
+  .step button{width:38px;height:38px;font-size:22px}
+  .step{right:4px;bottom:4px}
+  .tag{font-size:10px;padding:2px 7px}
   .menu h2{font-size:18px;padding:10px 14px 2px}
   .page{padding:12px}
   #toast{bottom:auto;top:130px;white-space:nowrap}
-  .price{width:46px;height:46px}
-  .price span{font-size:15px}
+  .item .pic{aspect-ratio:4/3}
+  .item .pic img{object-position:50% 30%}
+  .price{width:34px;height:34px;top:4px;right:4px}
+  .price small{font-size:7px}
+  .price span{font-size:13px}
+  .price span.rng{font-size:10px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
