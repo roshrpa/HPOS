@@ -46,7 +46,7 @@ nav.tabs button[aria-current="true"]{background:var(--pink);color:#fff}
 
 main{flex:1;min-height:0;display:flex}
 .new{flex:1;min-width:0;display:grid;grid-template-columns:200px minmax(0,1fr) 350px}
-.rail{overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:6px}
+.rail{position:relative;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:6px}
 .cat{display:flex;align-items:center;gap:10px;padding:6px 10px 6px 6px;border-radius:99px;background:rgba(255,255,255,.7);text-align:left;min-height:52px;font-weight:600;font-size:14px;line-height:1.2}
 .cat img,.cat .ph{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;background:#fff}
 .cat[aria-pressed="true"]{background:var(--pink);color:#fff;box-shadow:0 2px 8px rgba(232,36,95,.35)}
@@ -566,11 +566,16 @@ function render(){
   var body = S.tab==='new' ? vNew() : S.tab==='orders' ? vOrders() : S.tab==='totals' ? vTotals() : vMenu();
   var sig = S.tab + (S.cat || '') + (S.edCat || '');
   lastSig = sig; lastTab = S.tab;
+  var wantReveal = S.reveal; S.reveal = false;
   app.innerHTML = vHeader() + '<main>' + body + '</main>' + vSheets();
   SCROLLERS.forEach(function(s){
     var e = document.querySelector(s), k = keep[s];
     if (e && k && (k[0] === sig || (KEEPALWAYS.indexOf(s) >= 0 && k[3] === S.tab))){ e.scrollTop = k[1]; e.scrollLeft = k[2]; }
   });
+  if (wantReveal){
+    var rl = document.querySelector('.rail'), ac = rl && rl.querySelector('[aria-pressed="true"]');
+    if (ac){ rl.scrollLeft = ac.offsetLeft - (rl.clientWidth - ac.offsetWidth) / 2; rl.scrollTop = ac.offsetTop - (rl.clientHeight - ac.offsetHeight) / 2; }
+  }
 }
 
 /* ---------- Actions ---------- */
@@ -735,6 +740,21 @@ document.addEventListener('click', function(e){
   }
   render();
 });
+/* Swipe left/right on the item list to change category */
+var sx = 0, sy = 0, swiping = false;
+document.addEventListener('touchstart', function(e){
+  var t = e.target.closest && e.target.closest('.items');
+  if (!t || S.sheet || S.review || e.touches.length !== 1){ swiping = false; return; }
+  swiping = true; sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+}, {passive:true});
+document.addEventListener('touchend', function(e){
+  if (!swiping) return; swiping = false;
+  var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+  if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+  var i = menu.map(function(c){ return c.id; }).indexOf(curCat().id), n = i + (dx < 0 ? 1 : -1);
+  if (n < 0 || n >= menu.length) return;
+  S.cat = menu[n].id; S.reveal = true; render(); toast(menu[n].name);
+}, {passive:true});
 S.cat = menu[0].id; S.edCat = menu[0].id;
 render();
 </script>
