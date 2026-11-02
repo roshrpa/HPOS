@@ -247,7 +247,151 @@ function today(){ return new Date().toLocaleDateString('en-CA'); }
 var db = (function(){ try { var r = localStorage.getItem(K); if (r) return JSON.parse(r); } catch(e){} return mem || {sales:[], counter:0, day:today(), stock:{}}; })();
 function save(){ mem = db; try { localStorage.setItem(K, JSON.stringify(db)); } catch(e){} }
 
-var S = {edCat:null, del:null, resetAsk:false, imgTarget:null, tab:'sale', cat:menu[0].id, cart:[], sheet:null, pay:null, tendered:'', receipt:null, range:'today', voidAsk:null};
+/* ---------- Inventory: materials, recipes, purchases, waste, stock count, variance ---------- */
+function invDefault(){
+  var now = Date.now();
+  var M = [
+    ['cupS','Ice cream cup S','pcs',0.30,true,100,500],['cupM','Ice cream cup M','pcs',0.40,true,100,400],['cupL','Ice cream cup L','pcs',0.50,true,100,300],
+    ['shk','Shake cup','pcs',0.60,true,100,300],['juice','Juice / mojito cup','pcs',0.60,true,100,300],
+    ['lid','Lid','pcs',0.15,false,100,600],['straw','Straw','pcs',0.05,false,100,600],['spoon','Spoon','pcs',0.05,false,200,1500],
+    ['mm','Mini Melts beads','g',0.03,false,3000,20000],['bk','Baskin ice cream','scoop',1.8,false,20,120],['milk','Milk','L',5,false,10,40]
+  ];
+  var R = {};
+  function r(c, s, list){ R[c + '|' + s] = list.map(function(x){ return {m:x[0], q:x[1]}; }); }
+  r('Mini Melts Ice Cream','Small',[['cupS',1],['spoon',1],['mm',100]]);
+  r('Mini Melts Ice Cream','Medium',[['cupM',1],['spoon',1],['mm',150]]);
+  r('Mini Melts Ice Cream','Large',[['cupL',1],['spoon',1],['mm',200]]);
+  r('Baskin Robbins','Small',[['cupS',1],['spoon',1],['bk',1]]);
+  r('Baskin Robbins','Medium',[['cupM',1],['spoon',1],['bk',2]]);
+  r('Baskin Robbins','Large',[['cupL',1],['spoon',1],['bk',3]]);
+  r('Mini Shakes','',[['shk',1],['lid',1],['straw',1],['milk',0.2],['mm',80]]);
+  r('Milk Shakes','',[['shk',1],['lid',1],['straw',1],['milk',0.25],['bk',2]]);
+  r('Fresh & Signature Juices','Cup',[['juice',1],['lid',1],['straw',1]]);
+  r('Mojitos','',[['juice',1],['lid',1],['straw',1]]);
+  var base = {};
+  M.forEach(function(x){ base[x[0]] = {t:now, q:x[6]}; });
+  return {materials:M.map(function(x){ return {id:x[0], name:x[1], unit:x[2], cost:x[3], cup:x[4], min:x[5]}; }), recipes:R, base:base, purchases:[], waste:[], counts:[]};
+}
+if (!db.inv) db.inv = invDefault();
+function num(n){ return Math.round(n * 100) / 100; }
+function rkey(cat, size){ return cat + '|' + (size || ''); }
+function mat(id){ return byId(db.inv.materials, id); }
+function usageMap(){
+  var u = {};
+  db.sales.forEach(function(s){ if (s.void) return; s.lines.forEach(function(l){
+    var r = db.inv.recipes[rkey(l.cat, l.size)]; if (!r) return;
+    r.forEach(function(x){ var b = db.inv.base[x.m] || {t:0}; if (s.t > b.t) u[x.m] = (u[x.m] || 0) + x.q * l.qty; });
+  }); });
+  return u;
+}
+function expectedMap(){
+  var u = usageMap(), e = {};
+  db.inv.materials.forEach(function(m){
+    var b = db.inv.base[m.id] || {t:0, q:0}, q = b.q;
+    db.inv.purchases.forEach(function(p){ if (p.m === m.id && p.t > b.t) q += p.q; });
+    db.inv.waste.forEach(function(w){ if (w.m === m.id && w.t > b.t) q -= w.q; });
+    e[m.id] = {exp:q - (u[m.id] || 0), used:u[m.id] || 0};
+  });
+  return e;
+}
+function avgPriceForCup(mid){
+  var rev = 0, units = 0;
+  db.sales.forEach(function(s){ if (s.void) return; s.lines.forEach(function(l){
+    var r = db.inv.recipes[rkey(l.cat, l.size)]; if (!r) return;
+    r.forEach(function(x){ if (x.m === mid){ rev += l.price * l.qty; units += x.q * l.qty; } });
+  }); });
+  return units ? rev / units : 0;
+}
+function fdate(t){ var d = new Date(t); return d.toLocaleDateString('en-GB', {day:'numeric', month:'short'}) + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+function matOpts(sel){ return db.inv.materials.map(function(m){ return '<option value="'+m.id+'"'+(m.id===sel?' selected':'')+'>'+esc(m.name)+' ('+esc(m.unit)+')</option>'; }).join(''); }
+
+function vInv(){
+  var tabs = [['over','Overview'],['buy','Buy / waste'],['count','Stock count'],['var','Variance'],['rec','Recipes'],['mat','Materials']];
+  var seg = '<div class="seg" style="overflow-x:auto">' + tabs.map(function(t){ return '<button data-act="invtab" data-id="'+t[0]+'" aria-pressed="'+(S.inv===t[0])+'">'+t[1]+'</button>'; }).join('') + '</div>';
+  var body = S.inv === 'over' ? invOver() : S.inv === 'buy' ? invBuy() : S.inv === 'count' ? invCount() : S.inv === 'var' ? invVar() : S.inv === 'rec' ? invRec() : invMat();
+  return '<div class="page"><div class="bar">' + seg + '</div>' + body + '</div>';
+}
+function invOver(){
+  var E = expectedMap();
+  var rows = db.inv.materials.map(function(m){
+    var e = E[m.id], b = db.inv.base[m.id] || {t:0};
+    var st = e.exp <= 0 ? '<span class="pill void">Out</span>' : (e.exp <= m.min ? '<span class="pill void">Low</span>' : '<span class="pill cash">OK</span>');
+    return '<tr><td>'+esc(m.name)+(m.cup?' <span class="pill card">cup</span>':'')+'</td><td class="n"><b>'+num(e.exp)+'</b> '+esc(m.unit)+'</td><td>'+st+'</td><td class="n">'+num(e.used)+'</td><td>'+(b.t?fdate(b.t):'-')+'</td></tr>';
+  }).join('');
+  return '<p style="color:var(--muted);margin:0 0 10px">What should be on the shelf now = last count + purchases − waste − what the sales used. Compare it with a real count to find missing stock.</p>'
+    + '<div class="tbl"><table><thead><tr><th>Material</th><th class="n">Should be on hand</th><th>Status</th><th class="n">Used by sales since count</th><th>Last count</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function invBuy(){
+  var buy = db.inv.purchases.slice(-12).reverse().map(function(p){ var m = mat(p.m);
+    return '<tr><td>'+fdate(p.t)+'</td><td>'+esc(m?m.name:'?')+'</td><td class="n">+'+num(p.q)+'</td><td class="n">'+money(p.cost)+'</td><td>'+esc(p.supplier||'')+'</td><td class="n"><button class="btn ghost sm" data-act="delbuy" data-id="'+p.id+'">Delete</button></td></tr>'; }).join('');
+  var waste = db.inv.waste.slice(-12).reverse().map(function(w){ var m = mat(w.m);
+    return '<tr><td>'+fdate(w.t)+'</td><td>'+esc(m?m.name:'?')+'</td><td class="n">−'+num(w.q)+'</td><td>'+esc(w.reason)+'</td><td class="n"><button class="btn ghost sm" data-act="delwaste" data-id="'+w.id+'">Delete</button></td></tr>'; }).join('');
+  return '<div class="tbl"><h3>Stock in (purchase)</h3><div style="padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;align-items:end">'
+    + '<label class="fld">Material<select id="pm" class="inp">'+matOpts()+'</select></label><label class="fld">Quantity<input id="pq" class="inp" type="number" min="0" step="any" inputmode="decimal"></label>'
+    + '<label class="fld">Total cost (AED)<input id="pc" class="inp" type="number" min="0" step="any" inputmode="decimal"></label><label class="fld">Supplier<input id="ps" class="inp"></label>'
+    + '<button class="btn primary sm" data-act="addbuy">Add stock</button></div><table><tbody>'+(buy||'<tr><td>No purchases yet.</td></tr>')+'</tbody></table></div>'
+    + '<div class="tbl"><h3>Stock out (waste, spoiled, staff use)</h3><div style="padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;align-items:end">'
+    + '<label class="fld">Material<select id="wm" class="inp">'+matOpts()+'</select></label><label class="fld">Quantity<input id="wq" class="inp" type="number" min="0" step="any" inputmode="decimal"></label>'
+    + '<label class="fld">Reason<select id="wr" class="inp"><option>Spoiled</option><option>Damaged</option><option>Staff meal</option><option>Sample or free</option><option>Other</option></select></label>'
+    + '<button class="btn plum sm" data-act="addwaste">Record</button></div><table><tbody>'+(waste||'<tr><td>No waste recorded.</td></tr>')+'</tbody></table></div>';
+}
+function invCount(){
+  var E = expectedMap();
+  var rows = db.inv.materials.map(function(m){
+    var v = S.cnt[m.id] === undefined ? '' : S.cnt[m.id];
+    return '<tr><td>'+esc(m.name)+'</td><td class="n">'+num(E[m.id].exp)+' '+esc(m.unit)+'</td><td class="n"><input class="inp" type="number" min="0" step="any" inputmode="decimal" data-f="cnt" data-m="'+m.id+'" placeholder="count" value="'+esc(v)+'" aria-label="Counted '+esc(m.name)+'"></td></tr>';
+  }).join('');
+  var done = S.lastCount ? byId(db.inv.counts, S.lastCount) : null;
+  return (done ? '<div class="card" style="background:var(--done-bg)"><b>Count saved.</b> See the Variance tab for the result. '+done.lines.filter(function(l){ return l.diff < 0; }).length+' items are short.</div>' : '')
+    + '<p style="color:var(--muted);margin:0 0 10px">Count what is physically there (cups, lids, tubs, milk) and type it in. Leave a row empty to skip it. Do this at closing time, ideally by someone other than the person at the counter.</p>'
+    + '<div class="tbl"><table><thead><tr><th>Material</th><th class="n">Should be</th><th class="n">Counted</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    + '<button class="btn primary" data-act="savecount">Save count</button>';
+}
+function invVar(){
+  if (!db.inv.counts.length) return '<div class="empty">No stock count yet. Do one in the Stock count tab.</div>';
+  return db.inv.counts.slice().reverse().map(function(c){
+    var short = c.lines.filter(function(l){ return l.diff !== 0; });
+    var rows = c.lines.map(function(l){
+      var m = mat(l.m), cls = l.diff < 0 ? 'color:var(--pink-dk);font-weight:700' : (l.diff > 0 ? 'color:var(--done);font-weight:700' : '');
+      return '<tr><td>'+esc(m?m.name:l.m)+'</td><td class="n">'+num(l.expected)+'</td><td class="n">'+num(l.counted)+'</td><td class="n" style="'+cls+'">'+(l.diff>0?'+':'')+num(l.diff)+'</td><td class="n">'+(l.diff<0?money(-l.diff*l.cost):'')+'</td></tr>';
+    }).join('');
+    var missCups = c.lines.filter(function(l){ return l.cup && l.diff < 0; });
+    var cupUnits = missCups.reduce(function(a,l){ return a - l.diff; }, 0), est = missCups.reduce(function(a,l){ return a - l.diff * l.avg; }, 0);
+    var loss = c.lines.filter(function(l){ return l.diff < 0; }).reduce(function(a,l){ return a - l.diff * l.cost; }, 0);
+    return '<div class="tbl"><h3>Count of '+fdate(c.t)+'</h3>'
+      + (cupUnits ? '<div style="padding:12px 16px;background:var(--warn-bg);color:var(--warn);font-weight:600">'+num(cupUnits)+' cups are missing compared with what the sales used. That is about AED '+money(est)+' of sales that may not have been rung up.</div>' : '')
+      + '<table><thead><tr><th>Material</th><th class="n">Should be</th><th class="n">Counted</th><th class="n">Difference</th><th class="n">Cost of shortage</th></tr></thead><tbody>'+rows+'</tbody></table>'
+      + '<div style="padding:10px 16px;font-weight:600">Shortage at cost: AED '+money(loss)+'</div></div>';
+  }).join('');
+}
+function invRec(){
+  var chips = menu.map(function(m){ return '<button class="cat" data-act="reccat" data-id="'+m.id+'" aria-pressed="'+(m.id===(S.recCat||menu[0].id))+'">'+esc(m.name)+'</button>'; }).join('');
+  var c = byId(menu, S.recCat) || menu[0];
+  var cards = c.sizes.map(function(s){
+    var k = rkey(c.name, s.label), list = db.inv.recipes[k] || [];
+    var rows = list.map(function(x, i){
+      return '<div class="srow"><select class="inp" style="flex:2" data-f="rmat" data-k="'+esc(k)+'" data-i="'+i+'">'+matOpts(x.m)+'</select>'
+        + '<input class="inp" style="flex:1" type="number" min="0" step="any" inputmode="decimal" data-f="rqty" data-k="'+esc(k)+'" data-i="'+i+'" value="'+x.q+'" aria-label="Quantity">'
+        + '<button class="btn danger sm" data-act="rmrec" data-k="'+esc(k)+'" data-i="'+i+'" aria-label="Remove">×</button></div>';
+    }).join('');
+    return '<div class="card"><h3>'+esc(c.name)+(s.label?' · '+esc(s.label):'')+'</h3>'+(rows||'<p style="color:var(--muted);margin:0 0 10px">Nothing is deducted for this item.</p>')+'<button class="btn ghost sm" data-act="addrec" data-k="'+esc(k)+'">+ Add material</button></div>';
+  }).join('');
+  return '<p style="color:var(--muted);margin:0 0 10px">What is used up each time one of these is sold (the same for every flavour in the category). The numbers here are sample values. Replace them with your real portions.</p><div class="cats" style="padding:0 0 10px">'+chips+'</div>'+cards;
+}
+function invMat(){
+  var rows = db.inv.materials.map(function(m){
+    return '<tr><td><input class="inp" style="width:100%;text-align:left" data-f="mname" data-m="'+m.id+'" value="'+esc(m.name)+'" aria-label="Name"></td>'
+      + '<td><input class="inp" style="width:70px;text-align:left" data-f="munit" data-m="'+m.id+'" value="'+esc(m.unit)+'" aria-label="Unit"></td>'
+      + '<td class="n"><input class="inp" type="number" min="0" step="any" data-f="mcost" data-m="'+m.id+'" value="'+m.cost+'" aria-label="Cost per unit"></td>'
+      + '<td class="n"><input class="inp" type="number" min="0" step="any" data-f="mmin" data-m="'+m.id+'" value="'+m.min+'" aria-label="Low stock level"></td>'
+      + '<td><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-f="mcup" data-m="'+m.id+'"'+(m.cup?' checked':'')+'> cup</label></td>'
+      + '<td class="n">'+(S.matDel===m.id?'<button class="btn primary sm" data-act="matdelyes" data-id="'+m.id+'">Delete</button> <button class="btn ghost sm" data-act="matdelno">Keep</button>':'<button class="btn ghost sm" data-act="matdel" data-id="'+m.id+'">Delete</button>')+'</td></tr>';
+  }).join('');
+  return '<p style="color:var(--muted);margin:0 0 10px">Everything you buy and use up. Mark the cups so the Variance tab can turn missing cups into missing sales. Cost is per unit and updates when you add a purchase.</p>'
+    + '<div class="tbl"><table><thead><tr><th>Name</th><th>Unit</th><th class="n">Cost / unit</th><th class="n">Low at</th><th></th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div><button class="btn primary sm" data-act="addmat">+ Add material</button>';
+}
+
+var S = {inv:'over', cnt:{}, lastCount:null, recCat:null, matDel:null, edCat:null, del:null, resetAsk:false, imgTarget:null, tab:'sale', cat:menu[0].id, cart:[], sheet:null, pay:null, tendered:'', receipt:null, range:'today', voidAsk:null};
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function byId(a, id){ return a.filter(function(x){ return x.id === id; })[0]; }
 function src(x){ return x ? (IMGS[x] || x) : ''; }
@@ -327,7 +471,7 @@ function vMenu(){
 function vHeader(){
   function tab(id, label){ return '<button data-act="tab" data-v="'+id+'" aria-current="'+(S.tab===id)+'">'+label+'</button>'; }
   return '<header class="top"><div class="logo">HOLLY<br>WOOD</div><div class="brand">Hollywood POS<small>Counter and billing (sample)</small></div><nav class="tabs">'
-    + tab('sale','Sale') + tab('sales','Sales') + tab('stock','Stock') + tab('menu','Menu') + '</nav></header>';
+    + tab('sale','Sale') + tab('sales','Sales') + tab('inv','Inventory') + tab('stock','Item stock') + tab('menu','Menu') + '</nav></header>';
 }
 
 function vSale(){
@@ -447,7 +591,7 @@ var SCR = ['.items', '.cats', '.lines', '.page', '.ed .main', '.ed .list'], last
 function render(){
   var keep = {}; SCR.forEach(function(s){ var e = document.querySelector(s); if (e) keep[s] = [e.scrollTop, e.scrollLeft]; });
   var key = S.tab;
-  var body = S.tab === 'sale' ? vSale() : S.tab === 'sales' ? vSales() : S.tab === 'stock' ? vStock() : vMenu();
+  var body = S.tab === 'sale' ? vSale() : S.tab === 'sales' ? vSales() : S.tab === 'inv' ? vInv() : S.tab === 'stock' ? vStock() : vMenu();
   document.getElementById('app').innerHTML = vHeader() + '<main>' + body + '</main>' + vSheets();
   SCR.forEach(function(s){ var e = document.querySelector(s), k = keep[s]; if (e && k && key === lastKey && !(s === '.items' && S.catChanged)){ e.scrollTop = k[0]; e.scrollLeft = k[1]; } });
   S.catChanged = false; lastKey = key;
@@ -476,6 +620,10 @@ document.addEventListener('input', function(e){
     var ch = document.querySelector('.change span:last-child'), ok = document.querySelector('[data-act=payok]');
     if (ch) ch.textContent = 'AED ' + ((!isNaN(v) && v >= total) ? money(v - total) : '-'); if (ok) ok.disabled = isNaN(v) || v < total; return; }
   var f = t.dataset && t.dataset.f;
+  if (f === 'cnt'){ if (t.value === '') delete S.cnt[t.dataset.m]; else S.cnt[t.dataset.m] = t.value; return; }
+  if (f === 'rqty'){ db.inv.recipes[t.dataset.k][+t.dataset.i].q = parseFloat(t.value) || 0; save(); return; }
+  if (f === 'mname' || f === 'munit' || f === 'mcost' || f === 'mmin'){ var mm = mat(t.dataset.m);
+    if (f === 'mname') mm.name = t.value; else if (f === 'munit') mm.unit = t.value; else if (f === 'mcost') mm.cost = parseFloat(t.value) || 0; else mm.min = parseFloat(t.value) || 0; save(); return; }
   if (f && ['cname','car','slabel','sprice','iname','iar','itag','idesc','iprice'].indexOf(f) >= 0){
     var c = edCat(), item = t.dataset.id ? byId(c.items, t.dataset.id) : null;
     if (f === 'cname') c.name = t.value; else if (f === 'car') c.ar = t.value;
@@ -491,6 +639,8 @@ document.addEventListener('input', function(e){
 });
 document.addEventListener('change', function(e){
   var t = e.target;
+  if (t.dataset && t.dataset.f === 'rmat'){ db.inv.recipes[t.dataset.k][+t.dataset.i].m = t.value; save(); }
+  if (t.dataset && t.dataset.f === 'mcup'){ mat(t.dataset.m).cup = t.checked; save(); }
   if (t.dataset && t.dataset.f === 'ioff'){ byId(edCat().items, t.dataset.id).off = t.checked; saveMenu(); }
   if (t.id === 'file' && t.files && t.files[0]) readPicture(t.files[0]);
 });
@@ -517,7 +667,7 @@ document.addEventListener('click', function(e){
   if (el.classList.contains('scrim') && e.target !== el) return;
   var a = el.dataset.act, d = el.dataset, c;
   switch (a){
-    case 'tab': S.tab = d.v; S.voidAsk = null; S.del = null; S.resetAsk = false; if (d.v === 'menu' && !S.edCat) S.edCat = menu[0].id; break;
+    case 'tab': S.lastCount = null; S.tab = d.v; S.voidAsk = null; S.del = null; S.resetAsk = false; if (d.v === 'menu' && !S.edCat) S.edCat = menu[0].id; break;
     case 'cat': S.cat = d.id; S.catChanged = true; break;
     case 'item': c = curCat(); var item = byId(c.items, d.id); if (!item || item.off) break;
       if (c.sizes.length > 1) S.sheet = {cat:c.id, item:item.id}; else addLine(c, item, c.sizes[0]); break;
@@ -535,6 +685,37 @@ document.addEventListener('click', function(e){
     case 'view': S.receipt = +d.id; break;
     case 'print': try { window.print(); } catch(err){ toast('Printing is not available here'); } return;
     case 'range': S.range = d.id; break;
+    case 'invtab': S.inv = d.id; S.matDel = null; break;
+    case 'reccat': S.recCat = d.id; break;
+    case 'addrec': db.inv.recipes[d.k] = db.inv.recipes[d.k] || []; db.inv.recipes[d.k].push({m:db.inv.materials[0].id, q:1}); save(); break;
+    case 'rmrec': db.inv.recipes[d.k].splice(+d.i, 1); save(); break;
+    case 'addmat': db.inv.materials.push({id:uid('m'), name:'New material', unit:'pcs', cost:0, cup:false, min:0}); save(); break;
+    case 'matdel': S.matDel = d.id; break;
+    case 'matdelno': S.matDel = null; break;
+    case 'matdelyes': db.inv.materials = db.inv.materials.filter(function(m){ return m.id !== d.id; }); Object.keys(db.inv.recipes).forEach(function(k){ db.inv.recipes[k] = db.inv.recipes[k].filter(function(x){ return x.m !== d.id; }); }); S.matDel = null; save(); break;
+    case 'addbuy':
+      var pq = parseFloat(document.getElementById('pq').value), pc = parseFloat(document.getElementById('pc').value) || 0, pmid = document.getElementById('pm').value;
+      if (!(pq > 0)){ toast('Enter the quantity'); return; }
+      db.inv.purchases.push({id:Date.now(), t:Date.now(), m:pmid, q:pq, cost:pc, supplier:document.getElementById('ps').value.trim()});
+      if (pc > 0) mat(pmid).cost = Math.round(pc / pq * 1000) / 1000;
+      save(); toast('Stock added'); break;
+    case 'delbuy': db.inv.purchases = db.inv.purchases.filter(function(p){ return String(p.id) !== d.id; }); save(); break;
+    case 'addwaste':
+      var wq = parseFloat(document.getElementById('wq').value);
+      if (!(wq > 0)){ toast('Enter the quantity'); return; }
+      db.inv.waste.push({id:Date.now(), t:Date.now(), m:document.getElementById('wm').value, q:wq, reason:document.getElementById('wr').value});
+      save(); toast('Recorded'); break;
+    case 'delwaste': db.inv.waste = db.inv.waste.filter(function(w){ return String(w.id) !== d.id; }); save(); break;
+    case 'savecount':
+      var E = expectedMap(), lines = [], now = Date.now();
+      db.inv.materials.forEach(function(m){
+        if (S.cnt[m.id] === undefined) return;
+        var cnt = parseFloat(S.cnt[m.id]); if (isNaN(cnt)) return;
+        lines.push({m:m.id, expected:E[m.id].exp, counted:cnt, diff:cnt - E[m.id].exp, cost:m.cost, cup:m.cup, avg:m.cup ? avgPriceForCup(m.id) : 0});
+        db.inv.base[m.id] = {t:now, q:cnt};
+      });
+      if (!lines.length){ toast('Type at least one count'); return; }
+      var rec = {id:now, t:now, lines:lines}; db.inv.counts.push(rec); S.lastCount = rec.id; S.cnt = {}; save(); break;
     case 'edcat': S.edCat = d.id; S.del = null; break;
     case 'addcat': c = cat('New category', '', '', [['', 0]], []); menu.push(c); S.edCat = c.id; saveMenu(); break;
     case 'catup': c = edCat(); var i0 = menu.indexOf(c); if (i0 > 0) swap(menu, i0, i0 - 1); saveMenu(); break;
