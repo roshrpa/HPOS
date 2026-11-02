@@ -256,7 +256,7 @@ function invDefault(){
     ['jcR','Juice cup regular','pcs',0.50,true,100,400],['jcL','Juice cup large','pcs',0.65,true,100,300],
     ['cornM','Mr. Corn cup regular','pcs',0.40,true,50,200],['cornL','Mr. Corn cup large','pcs',0.50,true,50,200],['coffee','Coffee cup (hot drinks)','pcs',0.40,true,100,500],
     ['pcPlate','Pancake plate','pcs',0.60,true,50,200],['pcBox','Pancake box','pcs',1.50,true,20,100],['nPlate','Nachos plate','pcs',0.70,true,50,200],['acaiBowl','Acai bowl','pcs',0.80,true,30,150],
-    ['lid','Lid','pcs',0.15,false,100,1000],['straw','Straw','pcs',0.05,false,100,1000],['spoon','Spoon','pcs',0.05,false,200,1500],
+    ['lid','Cold cup lid','pcs',0.15,false,100,1000],['hotLid','Hot cup lid','pcs',0.15,false,100,500],['bowlLid','Acai bowl lid','pcs',0.30,false,30,150],['straw','Straw','pcs',0.05,false,100,1000],['spoon','Spoon','pcs',0.05,false,200,1500],
     ['mm','Mini Melts beads','g',0.03,false,3000,20000],['bk','Baskin ice cream','scoop',1.8,false,20,120],['milk','Milk','L',5,false,10,40]
   ];
   var R = {};
@@ -275,8 +275,8 @@ function invDefault(){
   });
   r('Mojitos','',[['jcR',1],['lid',1],['straw',1]]);
   r('Iced Teas','',[['jcR',1],['lid',1],['straw',1]]);
-  r('Acai Bowl','',[['acaiBowl',1],['spoon',1]]);
-  r('Hot Drinks','',[['coffee',1]]);
+  r('Acai Bowl','',[['acaiBowl',1],['bowlLid',1],['spoon',1]]);
+  r('Hot Drinks','',[['coffee',1],['hotLid',1]]);
   r('Pancake Box','',[['pcBox',1]]);
   r('Pancake Bites','',[['pcPlate',1]]);
   r('Nachos','',[['nPlate',1]]);
@@ -284,9 +284,9 @@ function invDefault(){
   r('Mr. Corn','Large',[['cornL',1],['spoon',1]]);
   var base = {};
   M.forEach(function(x){ base[x[0]] = {t:now, q:x[6]}; });
-  return {v:3, materials:M.map(function(x){ return {id:x[0], name:x[1], unit:x[2], cost:x[3], cup:x[4], min:x[5]}; }), recipes:R, base:base, purchases:[], waste:[], counts:[]};
+  return {v:4, materials:M.map(function(x){ return {id:x[0], name:x[1], unit:x[2], cost:x[3], cup:x[4], min:x[5]}; }), recipes:R, base:base, purchases:[], waste:[], counts:[]};
 }
-if (!db.inv || db.inv.v !== 3) db.inv = invDefault();
+if (!db.inv || db.inv.v !== 4) db.inv = invDefault();
 function num(n){ return Math.round(n * 100) / 100; }
 function rkey(cat, size){ return cat + '|' + (size || ''); }
 function mat(id){ return byId(db.inv.materials, id); }
