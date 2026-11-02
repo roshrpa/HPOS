@@ -15,3 +15,7 @@ Open `index.html` in Chrome and use "Add to Home screen".
 Every push to `main` builds an APK with GitHub Actions (Capacitor, debug-signed).
 Download `hollywood-orders.apk` from the **Releases** page (release `apk-latest`), or from the workflow run's Artifacts.
 On the tablet, allow "Install unknown apps" for the browser, open the file and install.
+
+## POS (sample)
+
+`pos/index.html` is a sample counter POS web app (billing, VAT, receipts, sales, stock). It is published at `/pos/` on GitHub Pages. Data is saved in the browser only.

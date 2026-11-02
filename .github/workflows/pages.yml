@@ -26,6 +26,8 @@ jobs:
         run: |
           mkdir -p site
           cp index.html site/index.html
+          mkdir -p site/pos
+          cp pos/index.html site/pos/index.html
       - uses: actions/configure-pages@v5
         with:
           enablement: true
