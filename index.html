@@ -39,6 +39,11 @@ header.top{display:flex;align-items:center;gap:14px;padding:8px 18px;background:
 .logo{width:46px;height:46px;border-radius:50%;background:var(--pink);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;line-height:1;text-align:center;letter-spacing:.2px;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--plum)}
 .brand{font-weight:700;font-size:20px;margin-right:auto;line-height:1.15}
 .brand small{display:block;font-size:12px;font-weight:500;color:var(--muted)}
+.syncpill{border-radius:99px;padding:6px 12px 6px 22px;font-size:12px;font-weight:600;background:#f1eef0;color:var(--muted);position:relative;min-height:32px}
+.syncpill::before{content:'';position:absolute;left:9px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:#b8b3b8}
+.syncpill.ok{color:var(--done);background:var(--done-bg)} .syncpill.ok::before{background:var(--done)}
+.syncpill.wait,.syncpill.busy{color:var(--warn);background:var(--warn-bg)} .syncpill.wait::before,.syncpill.busy::before{background:#d99a1f}
+.syncpill.err{color:var(--pink-dk);background:#fde6ed} .syncpill.err::before{background:var(--pink)}
 nav.tabs{display:flex;gap:6px}
 nav.tabs button{padding:10px 18px;border-radius:99px;font-weight:600;color:var(--muted);min-height:48px;display:flex;align-items:center;gap:8px}
 nav.tabs button[aria-current="true"]{background:var(--pink);color:#fff}
@@ -383,7 +388,7 @@ function vHeader(){
   function tab(id, label, extra){
     return '<button data-act="tab" data-v="'+id+'" aria-current="'+(S.tab===id)+'">'+label+(extra||'')+'</button>';
   }
-  return '<header class="top"><div class="logo">HOLLY<br>WOOD</div><div class="brand">Hollywood Ice Creams<small>Car order pad</small></div><nav class="tabs">'
+  return '<header class="top"><div class="logo">HOLLY<br>WOOD</div><div class="brand">Hollywood Ice Creams<small>Car order pad</small></div><button id="syncpill" class="syncpill off" data-act="syncnow">Not connected</button><nav class="tabs">'
     + tab('new','New order', S.cart.length ? '<span class="badge">'+totalQty(S.cart)+'</span>' : '')
     + tab('orders','Orders', n ? '<span class="badge">'+n+'</span>' : '')
     + tab('totals','To enter')
@@ -422,7 +427,7 @@ function vNew(){
   }).join('') : '<div class="empty">No items yet.<br>Tap an item to add it.</div>';
   return '<div class="new"><nav class="rail" aria-label="Categories">'+rail+'</nav>'
     + '<section class="menu"><h2>'+esc(c.name)+(c.ar ? '<span class="ar">'+esc(c.ar)+'</span>' : '')+'</h2><div class="items">'+items+'</div></section>'
-    + '<aside class="panel'+(S.cartOpen?' open':'')+'"><h2 data-act="togglecart">Order #'+curNo()+'<small>'+totalQty(S.cart)+' items</small></h2>'+(S.editing ? '<div class="editing">Editing a saved order</div>' : '')+'<div class="lines">'+lines+'</div>'
+    + '<aside class="panel'+(S.cartOpen?' open':'')+'"><h2 data-act="togglecart">Order #'+(S.editing ? '' : (sync.dev ? sync.dev + '-' : ''))+curNo()+'<small>'+totalQty(S.cart)+' items</small></h2>'+(S.editing ? '<div class="editing">Editing a saved order</div>' : '')+'<div class="lines">'+lines+'</div>'
     + '<div class="foot"><div class="tot"><span>Total</span><span>AED '+money(totalAmt(S.cart))+'</span></div>'
     + '<input id="note" class="inp" type="text" placeholder="Car / note (optional)" value="'+esc(S.note)+'" autocomplete="off">'
     + '<button class="btn primary" data-act="review"'+(S.cart.length?'':' disabled')+'>'+(S.editing ? 'Review changes' : 'Review order')+'</button>'
@@ -439,13 +444,13 @@ function vOrders(){
     var li = o.lines.map(function(l){
       return '<li><i>'+l.qty+'×</i><span>'+(l.size?'<span class="size">'+esc(l.size)+'</span>':'')+esc(l.name)+' <small>'+esc(l.cat)+'</small></span></li>';
     }).join('');
-    return '<article class="ord'+(o.done?' done':'')+'"><div class="hd"><span class="no">#'+o.no+'</span><span class="pill '+(o.done?'d':'p')+'">'+(o.done?'In system':'Pending')+'</span><span class="meta">'+when+'</span></div>'
+    return '<article class="ord'+(o.done?' done':'')+'"><div class="hd"><span class="no">#'+orderLabel(o)+'</span><span class="pill '+(o.done?'d':'p')+'">'+(o.done?'In system':'Pending')+'</span><span class="meta">'+when+'</span></div>'
       + '<ul>'+li+'</ul>' + (o.note ? '<div class="note">'+esc(o.note)+'</div>' : '')
       + '<div class="sum"><span>Total</span><span>AED '+money(totalAmt(o.lines))+'</span></div>'
       + '<div class="act">' + (o.done
         ? '<button class="btn ghost sm" data-act="undo" data-no="'+o.id+'">Mark pending</button>'
         : '<button class="btn ghost sm" data-act="editord" data-no="'+o.id+'">Edit</button>'
-          + (S.cancelAsk === o.id ? '<button class="btn primary sm" data-act="cancelyes" data-no="'+o.id+'">Delete order</button><button class="btn ghost sm" data-act="cancelno">Keep</button>'
+          + (S.cancelAsk === String(o.id) ? '<button class="btn primary sm" data-act="cancelyes" data-no="'+o.id+'">Delete order</button><button class="btn ghost sm" data-act="cancelno">Keep</button>'
                                   : '<button class="btn danger sm" data-act="cancelask" data-no="'+o.id+'">Cancel order</button>')
           + '<button class="btn good sm" data-act="done" data-no="'+o.id+'">Mark done</button>') + '</div></article>';
   }).join('');
@@ -540,6 +545,7 @@ function vMenu(){
     + '<div class="card"><h3>Category actions</h3><div style="display:flex;gap:8px;flex-wrap:wrap">'
     + (catDel ? '<button class="btn primary sm" data-act="delcatyes">Delete "'+esc(c.name)+'" and its items</button><button class="btn ghost sm" data-act="delno">Keep</button>'
               : '<button class="btn danger sm" data-act="delcat">Delete category</button>') + '</div></div>'
+    + syncCard()
     + '<div class="card"><h3>Editor settings</h3><div class="fgrid">'+fld('Editor PIN','<input class="inp" id="newpin" inputmode="numeric" value="'+esc(pin)+'">')+'</div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'
     + (S.resetAsk ? '<button class="btn primary sm" data-act="resetyes">Yes, restore the printed menu</button><button class="btn ghost sm" data-act="resetno">Cancel</button>'
@@ -559,7 +565,7 @@ function vSheets(){
     var li = S.cart.map(function(l){
       return '<li><i>'+l.qty+'×</i><span>'+esc(l.name)+'</span>'+(l.size?'<em>'+esc(l.size)+'</em>':'')+'<span class="amt">'+money(l.qty * l.price)+'</span></li>';
     }).join('');
-    return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Confirm order"><h3>Order #'+curNo()+'</h3><p>Read this back to the customer. '+totalQty(S.cart)+' items.</p>'
+    return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Confirm order"><h3>Order #'+(S.editing ? '' : (sync.dev ? sync.dev + '-' : ''))+curNo()+'</h3><p>Read this back to the customer. '+totalQty(S.cart)+' items.</p>'
       + '<ul class="rev">'+li+'</ul><div class="tot"><span>Total</span><span>AED '+money(totalAmt(S.cart))+'</span></div>' + (S.note ? '<p style="color:var(--ink);margin-top:8px">Note: '+esc(S.note)+'</p>' : '')
       + '<div class="btns"><button class="btn ghost" data-act="back">Edit</button><button class="btn primary" data-act="place">'+(S.editing ? 'Save changes' : 'Confirm order')+'</button></div></div></div>';
   }
@@ -577,6 +583,7 @@ function render(){
   var wantReveal = S.reveal; S.reveal = false;
   var wantAnim = S.anim; S.anim = null;
   app.innerHTML = vHeader() + '<main>' + body + '</main>' + vSheets();
+  paintSync();
   SCROLLERS.forEach(function(s){
     var e = document.querySelector(s), k = keep[s];
     if (e && k && (k[0] === sig || (KEEPALWAYS.indexOf(s) >= 0 && k[3] === S.tab))){ e.scrollTop = k[1]; e.scrollLeft = k[2]; }
@@ -604,6 +611,7 @@ function swap(arr, i, j){ var t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
 /* Typing in editor fields saves without redrawing, so the keyboard stays open. */
 document.addEventListener('input', function(e){
   var t = e.target, f = t.dataset && t.dataset.f;
+  if (f === 'sync'){ sync[t.dataset.k] = t.value.trim(); saveSync(); paintSync(); return; }
   if (t.id === 'note'){ S.note = t.value; return; }
   if (t.id === 'pin'){ S.pinTry = t.value; return; }
   if (t.id === 'newpin'){ if (t.value.trim()){ pin = t.value.trim(); lsSet(K_PIN, pin); } return; }
@@ -683,9 +691,11 @@ document.addEventListener('click', function(e){
       if (eo){ S.cart = eo.lines.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }); S.note = eo.note || ''; S.editing = eo.id; S.tab = 'new'; S.cartOpen = true; }
       break;
     case 'canceledit': S.cart = []; S.note = ''; S.editing = null; S.cartOpen = false; break;
-    case 'cancelask': S.cancelAsk = +d.no; break;
+    case 'cancelask': S.cancelAsk = d.no; break;
     case 'cancelno': S.cancelAsk = null; break;
-    case 'cancelyes': db.orders = db.orders.filter(function(o){ return String(o.id) !== d.no; }); S.cancelAsk = null; saveOrders(); toast('Order deleted'); break;
+    case 'cancelyes': db.orders = db.orders.filter(function(o){ return String(o.id) !== d.no; }); S.cancelAsk = null; saveOrders(); if (isUuid(d.no)) queueEvent('order_cancel', {id:d.no}); toast('Order deleted'); break;
+    case 'syncnow': kickSync(); toast(syncOn() ? 'Syncing' : 'Not connected yet'); return;
+    case 'synctest': testSync(); return;
     case 'togglecart': S.cartOpen = !S.cartOpen; break;
     case 'item':
       c = curCat(); var item = byId(c.items, d.id);
@@ -702,20 +712,21 @@ document.addEventListener('click', function(e){
     case 'place':
       if (S.editing){
         var oo = byId(db.orders, S.editing);
-        if (oo){ oo.lines = S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }); oo.note = S.note.trim(); saveOrders(); toast('Order #' + oo.no + ' updated'); }
+        if (oo){ oo.lines = S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }); oo.note = S.note.trim(); saveOrders(); if (isUuid(oo.id)) queueEvent('order_update', {id:oo.id, lines:oo.lines, note:oo.note}); toast('Order #' + orderLabel(oo) + ' updated'); }
         S.cart = []; S.note = ''; S.review = false; S.editing = null; S.cartOpen = false; S.tab = 'orders'; S.filter = 'pending';
         break;
       }
       if (db.day !== today()){ db.day = today(); db.counter = 0; }
       db.counter++;
-      db.orders.push({id:Date.now(), no:db.counter, t:Date.now(), lines:S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }), note:S.note.trim(), done:false});
-      saveOrders(); toast('Order #' + db.counter + ' saved');
+      var no0 = {id:uuid(), no:db.counter, dev:sync.dev || '', t:Date.now(), lines:S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }), note:S.note.trim(), done:false};
+      db.orders.push(no0); saveOrders(); queueEvent('order', {id:no0.id, no:no0.no, dev:no0.dev, day:today(), t:no0.t, lines:no0.lines, note:no0.note});
+      toast('Order #' + orderLabel(no0) + ' saved');
       S.cart = []; S.note = ''; S.review = false; S.cat = menu[0].id;
       break;
     case 'filter': S.filter = d.id; S.clearAsk = false; break;
     case 'done': case 'undo':
-      db.orders.forEach(function(o){ if (String(o.id) === d.no) o.done = (a === 'done'); }); saveOrders(); break;
-    case 'doneall': pending().forEach(function(o){ o.done = true; }); saveOrders(); toast('All marked done'); break;
+      db.orders.forEach(function(o){ if (String(o.id) === d.no){ o.done = (a === 'done'); if (isUuid(o.id)) queueEvent('order_done', {id:o.id, done:o.done}); } }); saveOrders(); break;
+    case 'doneall': pending().forEach(function(o){ o.done = true; if (isUuid(o.id)) queueEvent('order_done', {id:o.id, done:true}); }); saveOrders(); toast('All marked done'); break;
     case 'clearask': S.clearAsk = true; break;
     case 'clearno': S.clearAsk = false; break;
     case 'clearyes': db.orders = db.orders.filter(function(o){ return !o.done; }); S.clearAsk = false; saveOrders(); break;
@@ -752,6 +763,141 @@ document.addEventListener('click', function(e){
   }
   render();
 });
+/* ---------- Sync with the shop server ----------
+   Everything is saved on this device first. Each change is also put in a waiting list ("outbox").
+   Whenever the server can be reached the waiting list is sent and the other devices' changes are fetched. */
+var SYNC_KEY = 'hollywood_sync_v1';
+var sync = (function(){
+  var d = {url:'', token:'', dev:'', lastSeq:0, outbox:[], bad:[], lastOk:0, err:''};
+  try { var r = JSON.parse(localStorage.getItem(SYNC_KEY)); if (r) for (var k in r) d[k] = r[k]; } catch(e){}
+  return d;
+})();
+var syncBusy = false, syncTimer = null, pendingRender = false;
+var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function saveSync(){ try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch(e){} }
+function uuid(){
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  var b = new Uint8Array(16);
+  if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(b); else for (var i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256);
+  b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+  var h = Array.prototype.map.call(b, function(x){ return ('0' + x.toString(16)).slice(-2); }).join('');
+  return h.slice(0,8) + '-' + h.slice(8,12) + '-' + h.slice(12,16) + '-' + h.slice(16,20) + '-' + h.slice(20);
+}
+function isUuid(x){ return UUID_RE.test(String(x)); }
+function syncOn(){ return !!(sync.url && sync.token); }
+function queueEvent(type, payload){
+  sync.outbox.push({id:uuid(), type:type, t:Date.now(), payload:payload});
+  if (sync.outbox.length > 5000) sync.outbox.splice(0, sync.outbox.length - 5000);
+  saveSync(); paintSync(); kickSync();
+}
+function kickSync(){ clearTimeout(syncTimer); syncTimer = setTimeout(function(){ runSync(); }, 500); }
+async function syncApi(path, o){
+  o = o || {};
+  var ctl = new AbortController(), to = setTimeout(function(){ ctl.abort(); }, 8000);
+  try {
+    var r = await fetch(sync.url.replace(/\/+$/, '') + path, {
+      method: o.method || 'GET', signal: ctl.signal,
+      headers: Object.assign({'Authorization': 'Bearer ' + sync.token}, o.body ? {'Content-Type': 'application/json'} : {}),
+      body: o.body ? JSON.stringify(o.body) : undefined
+    });
+    var j = null; try { j = await r.json(); } catch(e){}
+    if (!r.ok){ var er = new Error((j && j.error) || ('Server answered ' + r.status)); er.status = r.status; throw er; }
+    return j;
+  } catch(e){
+    if (e.name === 'AbortError') e.message = 'The server did not answer';
+    else if (!e.status) e.message = 'Cannot reach the server';
+    throw e;
+  } finally { clearTimeout(to); }
+}
+async function runSync(){
+  if (!syncOn() || syncBusy) return;
+  syncBusy = true; sync.err = ''; paintSync();
+  try {
+    while (sync.outbox.length){
+      var batch = sync.outbox.slice(0, 100);
+      try { await syncApi('/sync/push', {method:'POST', body:{events:batch}}); }
+      catch(e){
+        if (e.status === 400){ sync.bad = (sync.bad || []).concat(batch).slice(-200); }   // a bad event must not block the rest
+        else throw e;
+      }
+      sync.outbox.splice(0, batch.length); saveSync();
+    }
+    var more = true, changed = false;
+    while (more){
+      var p = await syncApi('/sync/pull?after=' + sync.lastSeq + '&limit=500');
+      if (p.events.length && applyRemote(p.events)) changed = true;
+      sync.lastSeq = p.last_seq; saveSync();
+      more = p.events.length >= 500;
+    }
+    sync.lastOk = Date.now();
+    if (changed) renderSafe();
+  } catch(e){ sync.err = e.status === 401 ? 'The device token is wrong or switched off' : (e.message || 'Offline'); }
+  syncBusy = false; saveSync(); paintSync();
+}
+function renderSafe(){
+  var a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)){ pendingRender = true; return; }
+  render();
+}
+document.addEventListener('focusout', function(){ if (pendingRender){ setTimeout(function(){ var a = document.activeElement; if (!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))){ pendingRender = false; render(); } }, 150); } });
+function syncState(){
+  if (!syncOn()) return {cls:'off', text:'Not connected'};
+  var n = sync.outbox.length;
+  if (syncBusy) return {cls:'busy', text:'Syncing' + (n ? ' ' + n : '')};
+  if (sync.err) return {cls:'err', text:'Offline' + (n ? ' · ' + n + ' waiting' : '')};
+  if (n) return {cls:'wait', text:n + ' waiting'};
+  return {cls:'ok', text:'Synced'};
+}
+function syncText(){
+  if (!syncOn()) return 'Not connected. Type the server address and the device token, then press Save and test.';
+  var n = sync.outbox.length, t = sync.lastOk ? 'Last synced ' + new Date(sync.lastOk).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + '. ' : 'Not synced yet. ';
+  return (sync.err ? sync.err + '. ' : '') + t + (n ? n + ' changes are waiting to be sent.' : 'Nothing is waiting.') + (sync.bad && sync.bad.length ? ' ' + sync.bad.length + ' changes were refused by the server.' : '');
+}
+function paintSync(){
+  var st = syncState(), p = document.getElementById('syncpill');
+  if (p){ p.className = 'syncpill ' + st.cls; p.textContent = st.text; p.title = syncText(); }
+  var i = document.getElementById('syncinfo'); if (i) i.textContent = syncText();
+}
+async function testSync(){
+  if (!sync.url || !sync.token){ toast('Type the server address and the token first'); return; }
+  if (!/^https?:\/\//i.test(sync.url)) sync.url = 'http://' + sync.url;
+  saveSync();
+  try { await syncApi('/sync/pull?after=' + sync.lastSeq + '&limit=1'); sync.err = ''; toast('Connected'); runSync(); }
+  catch(e){ sync.err = e.status === 401 ? 'The device token is wrong or switched off' : e.message; toast(sync.err); }
+  paintSync();
+}
+function syncCard(){
+  return '<div class="card"><h3>Sync with the server</h3><div class="fgrid">'
+    + fld('Server address','<input class="inp" data-f="sync" data-k="url" placeholder="http://192.168.1.20:3000" value="'+esc(sync.url)+'" autocomplete="off" autocapitalize="off" spellcheck="false">')
+    + fld('Device token','<input class="inp" data-f="sync" data-k="token" value="'+esc(sync.token)+'" autocomplete="off" autocapitalize="off" spellcheck="false">')
+    + fld('Device code (up to 4 letters, shown in bill numbers)','<input class="inp" data-f="sync" data-k="dev" maxlength="4" placeholder="T1" value="'+esc(sync.dev)+'" autocomplete="off" autocapitalize="characters">')
+    + '</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn primary sm" data-act="synctest">Save and test</button><button class="btn ghost sm" data-act="syncnow">Sync now</button></div>'
+    + '<p id="syncinfo" style="color:var(--muted);font-size:13px;margin:10px 0 0">'+esc(syncText())+'</p></div>';
+}
+setInterval(function(){ runSync(); }, 15000);
+window.addEventListener('online', kickSync);
+document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') kickSync(); });
+
+/* Changes made on other devices */
+function orderLabel(o){ return (o.dev ? o.dev + '-' : '') + o.no; }
+function applyRemote(events){
+  var changed = false;
+  events.forEach(function(e){
+    var p = e.payload || {}, o = db.orders.filter(function(x){ return String(x.id) === String(p.id); })[0];
+    if (e.type === 'order'){
+      if (!o && isUuid(p.id)){ db.orders.push({id:p.id, no:p.no, dev:p.dev || '', t:p.t || e.t, lines:p.lines || [], note:p.note || '', done:false, remote:true}); changed = true; }
+    } else if (e.type === 'order_update'){
+      if (o){ o.lines = p.lines || o.lines; o.note = p.note || ''; changed = true; }
+    } else if (e.type === 'order_cancel'){
+      if (o){ db.orders = db.orders.filter(function(x){ return x !== o; }); changed = true; }
+    } else if (e.type === 'order_done'){
+      if (o){ o.done = p.done !== false; changed = true; }
+    }
+  });
+  if (changed) saveOrders();
+  return changed;
+}
+
 /* Swipe left/right on the item list to change category */
 var sx = 0, sy = 0, swiping = false;
 document.addEventListener('touchstart', function(e){
@@ -778,6 +924,7 @@ function goCat(n, dir){
 }
 S.cat = menu[0].id; S.edCat = menu[0].id;
 render();
+kickSync();
 </script>
 </body>
 </html>

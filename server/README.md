@@ -10,7 +10,7 @@ What it does today:
 - keeps the menu and settings in one place, with a version number so two people cannot overwrite each other by accident
 - gives a day report straight from the database (cash, card, discounts, cancelled bills, sales by category)
 
-What is **not** done yet: the tablet app and the POS do not call this server yet. That is the next step. Until then they keep working on their own, in the browser.
+The tablet order pad and the POS both sync with it (Menu tab on the tablet, Settings on the POS: *Sync with the server*). Without a connection they keep working on their own and send everything later.
 
 ## Files
 
@@ -80,7 +80,7 @@ Things to remember:
 - The computer must be on and awake whenever the shop is open. Turn off sleep in its power settings.
 - Back up every day (`scripts/backup.sh` on Mac/Linux). On Windows run `docker compose -f docker-compose.local.yml exec -T db pg_dump -U hpos hpos > backup.sql` and copy the file to a USB drive or cloud folder.
 - Use the address with `http://`, not `https://`. Browsers only let a page call the API with the same kind of address, which is why the API also serves the pages.
-- The tablet APK will need one small change (allow `http`) when it starts syncing. That goes in with the sync work.
+- The tablet APK now allows `http` addresses. Because of that change the first time you install the new APK the old app must be removed first, and orders saved inside the old app are lost.
 
 ### Moving to a bought server later
 
@@ -120,3 +120,10 @@ A `sale_cancel` payload: `{ "id": "<sale uuid>", "reason": "Wrong item entered",
 - The database is never opened to the internet. Only the API container can reach it.
 - Changing `db/schema.sql` later does not change a database that already exists. Add a new migration file when the time comes.
 - This is a first version. It has no user logins yet (only device tokens), so it cannot say which person gave a discount.
+
+## How the apps use it
+
+- **Tablet** saves each order on the tablet and sends it as an `order` event. Edits, deletes and "done" marks go as `order_update`, `order_cancel` and `order_done`.
+- **POS** shows those orders under **Tablet orders** on the Sale screen. *Load* puts the order into the bill; when the bill is paid the order is marked done on every tablet.
+- Bills, cancellations, purchases, waste, stock counts, cash paid out and day closings are sent from the POS. Bills and cancellations from other POS computers are also fetched and added to the local report. The other event types are stored on the server but are not merged between POS computers yet.
+- A device shows a coloured label in the top bar: **Synced**, **n waiting**, **Offline**, or **Not connected**.

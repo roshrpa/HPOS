@@ -1,5 +1,9 @@
 {
   "appId": "com.hollywoodicecreams.pos",
   "appName": "Hollywood Orders",
-  "webDir": "www"
+  "webDir": "www",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  }
 }
