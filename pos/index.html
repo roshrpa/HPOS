@@ -231,8 +231,6 @@ function defaultMenu(){
 
 
 
-var VAT_RATE = 0.05;
-var SHOP = {name:'Hollywood Ice Creams', trn:'TRN: (add your tax number)', insta:'@hollywoodicecreams_ae', tel:'056 900 4121 / 07 236 1564'};
 var K_MENU = 'hollywood_pos_menu_v1';
 var menu = (function(){ try { var r = JSON.parse(localStorage.getItem(K_MENU)); if (r && r.length) return r; } catch(e){} return defaultMenu(); })();
 menu.forEach(function(c){ if (c.name === 'Mini Melts Ice Cream' || c.name === 'Minimals Ice Cream') c.name = 'Minimelts Ice Cream'; });
@@ -288,6 +286,7 @@ function invDefault(){
   return {v:9, materials:M.map(function(x){ return {id:x[0], name:x[1], unit:x[2], cost:x[3], cup:x[4], min:x[5]}; }), recipes:R, base:base, purchases:[], waste:[], counts:[]};
 }
 if (!db.inv || db.inv.v !== 9) db.inv = invDefault();
+if (!db.settings) db.settings = {shop:'Hollywood Ice Creams', tel:'056 900 4121 / 07 236 1564', insta:'@hollywoodicecreams_ae', trn:'', vat:false, rate:5, allowZero:true, lowAt:5};
 /* Test start: every menu item begins with 100 in stock (runs once per browser) */
 if (db.stockSeed !== 1){ db.stock = {}; menu.forEach(function(c){ c.items.forEach(function(it0){ db.stock[skey(c.name, it0.name)] = 100; }); }); db.stockSeed = 1; save(); }
 function num(n){ return Math.round(n * 100) / 100; }
@@ -417,7 +416,9 @@ function money(n){ return (Math.round(n * 100) / 100).toFixed(2); }
 function priceOf(item, size){ var o = item.prices && item.prices[size.id]; return (o != null && o !== '' && !isNaN(+o)) ? +o : (+size.price || 0); }
 function skey(cat, name){ return cat + '|' + name; }
 function totalOf(lines){ return lines.reduce(function(a,l){ return a + l.qty * l.price; }, 0); }
-function vatOf(total){ return total * VAT_RATE / (1 + VAT_RATE); }
+function setg(){ return db.settings; }
+function vatRate(){ return setg().vat ? (parseFloat(setg().rate) || 0) / 100 : 0; }
+function vatOf(total){ var r = vatRate(); return total * r / (1 + r); }
 function nextNo(){ return (db.day === today() ? db.counter : 0) + 1; }
 var tt;
 function toast(m){ var t = document.getElementById('toast'); t.textContent = m; t.className = 'on'; clearTimeout(tt); tt = setTimeout(function(){ t.className = ''; }, 1700); }
@@ -485,10 +486,25 @@ function vMenu(){
 }
 
 
+
+function vSettings(){
+  var G = setg();
+  function sw(on, act, title, hint){
+    return '<div class="card" style="display:flex;gap:14px;align-items:center"><div style="flex:1"><b>'+title+'</b><div style="color:var(--muted);font-size:13px;margin-top:2px">'+hint+'</div></div>'
+      + '<button role="switch" aria-checked="'+on+'" data-act="'+act+'" class="btn '+(on?'good':'ghost')+' sm" style="min-width:92px">'+(on?'On':'Off')+'</button></div>';
+  }
+  function inp(label, k, val, type){ return '<label class="fld">'+label+'<input class="inp" '+(type?'type="'+type+'" step="any" inputmode="decimal" ':'')+'data-f="set" data-k="'+k+'" value="'+esc(val)+'"></label>'; }
+  return '<div class="page" style="max-width:760px">'
+    + sw(G.vat, 'tgvat', 'Charge VAT', G.vat ? 'Bills and receipts show VAT and the receipt says TAX INVOICE.' : 'No VAT on bills. Receipts say RECEIPT. Use this while the shop is below the VAT registration limit.')
+    + (G.vat ? '<div class="card"><div class="fgrid">'+inp('VAT rate (%)','rate',G.rate,'number')+inp('Tax registration number (TRN)','trn',G.trn)+'</div><p style="color:var(--muted);font-size:13px;margin:10px 0 0">Prices in the menu are treated as including VAT.</p></div>' : '')
+    + sw(G.allowZero, 'tgzero', 'Allow sale when item stock is 0', G.allowZero ? 'Staff can keep selling even if the stock count was not updated. Stock goes below zero so you can see it.' : 'An item with 0 stock shows Sold out and cannot be sold.')
+    + '<div class="card"><h3>Shop and receipt</h3><div class="fgrid">'+inp('Shop name','shop',G.shop)+inp('Phone on receipt','tel',G.tel)+inp('Instagram on receipt','insta',G.insta)+inp('Low stock warning at (items)','lowAt',G.lowAt,'number')+'</div></div>'
+    + '<p style="color:var(--muted);font-size:13px">Changes apply to new bills. Bills already made keep the VAT they were made with.</p></div>';
+}
 function vHeader(){
   function tab(id, label){ return '<button data-act="tab" data-v="'+id+'" aria-current="'+(S.tab===id)+'">'+label+'</button>'; }
   return '<header class="top"><div class="logo">HOLLY<br>WOOD</div><div class="brand">Hollywood POS<small>Counter and billing (sample)</small></div><nav class="tabs">'
-    + tab('sale','Sale') + tab('sales','Sales') + tab('inv','Inventory') + tab('stock','Item stock') + tab('menu','Menu') + '</nav></header>';
+    + tab('sale','Sale') + tab('sales','Sales') + tab('inv','Inventory') + tab('stock','Item stock') + tab('menu','Menu') + tab('settings','Settings') + '</nav></header>';
 }
 
 function vSale(){
@@ -500,12 +516,12 @@ function vSale(){
   var items = c.items.map(function(item){
     var p = c.sizes.map(function(s){ return priceOf(item, s); }), lo = Math.min.apply(null, p), hi = Math.max.apply(null, p);
     var left = stockLeft(c.name, item.name), avail = left === null ? null : left - inCart(c.name, item.name);
-    var out = item.off || (avail !== null && avail <= 0);
+    var out = item.off || (avail !== null && avail <= 0 && !setg().allowZero);
     var pic = src(item.img) || src(c.img);
     return '<button class="item'+(out?' off':'')+'" data-act="item" data-id="'+item.id+'"><div class="pic">'+(pic?'<img src="'+esc(pic)+'" alt="" loading="lazy">':esc(item.name.charAt(0)))+'</div>'
       + '<div class="price"><small>AED</small>'+(lo===hi?'<span>'+lo+'</span>':'<span class="rng">'+lo+'-'+hi+'</span>')+'</div>'
       + '<div class="body"><b>'+esc(item.name)+'</b>'+(item.ar?'<span class="ar">'+esc(item.ar)+'</span>':'')
-      + (avail !== null ? '<span class="stk'+(avail<=5?' low':'')+'">'+avail+' left</span>' : '') + '</div>'
+      + (avail !== null ? '<span class="stk'+(avail<=setg().lowAt?' low':'')+'">'+avail+' left</span>' : '') + '</div>'
       + (out ? '<div class="soldout">Sold out</div>' : '') + '</button>';
   }).join('');
   var total = totalOf(S.cart), vat = vatOf(total);
@@ -517,7 +533,7 @@ function vSale(){
   var has = S.cart.length > 0;
   return '<div class="sale"><section class="menu"><div class="cats">'+cats+'</div><div class="items">'+items+'</div></section>'
     + '<aside class="panel"><h2>Bill #'+nextNo()+'<small>'+S.cart.reduce(function(a,l){return a+l.qty;},0)+' items</small></h2><div class="lines">'+lines+'</div>'
-    + '<div class="foot"><div class="sum"><span>Subtotal (excl. VAT)</span><span>'+money(total-vat)+'</span></div><div class="sum"><span>VAT 5%</span><span>'+money(vat)+'</span></div>'
+    + '<div class="foot">'+(setg().vat ? '<div class="sum"><span>Subtotal (excl. VAT)</span><span>'+money(total-vat)+'</span></div><div class="sum"><span>VAT '+num(setg().rate)+'%</span><span>'+money(vat)+'</span></div>' : '')
     + '<div class="tot"><span>Total</span><span>AED '+money(total)+'</span></div>'
     + '<div class="row2"><button class="btn primary" data-act="pay" data-m="cash"'+(has?'':' disabled')+'>Cash</button><button class="btn plum" data-act="pay" data-m="card"'+(has?'':' disabled')+'>Card</button></div>'
     + (has ? '<button class="link" data-act="clear">Clear bill</button>' : '') + '</div></aside></div>';
@@ -529,7 +545,8 @@ function periodSales(){
 function vSales(){
   var list = periodSales(), ok = list.filter(function(s){ return !s.void; });
   var tot = ok.reduce(function(a,s){ return a + s.total; }, 0), cash = ok.filter(function(s){ return s.pay==='cash'; }).reduce(function(a,s){ return a + s.total; }, 0);
-  var tiles = [['Bills', ok.length], ['Sales (AED)', money(tot)], ['VAT (AED)', money(vatOf(tot))], ['Cash', money(cash)], ['Card', money(tot - cash)]]
+  var vatTot = ok.reduce(function(a,s){ return a + (s.vat || 0); }, 0);
+  var tiles = [['Bills', ok.length], ['Sales (AED)', money(tot)]].concat(vatTot > 0 ? [['VAT (AED)', money(vatTot)]] : []).concat([ ['Cash', money(cash)], ['Card', money(tot - cash)]])
     .map(function(t){ return '<div class="tile"><small>'+t[0]+'</small><b>'+t[1]+'</b></div>'; }).join('');
   var top = {}; ok.forEach(function(s){ s.lines.forEach(function(l){ var k = l.name + (l.size ? ' ('+l.size+')' : '') + ' · ' + l.cat; top[k] = (top[k]||0) + l.qty; }); });
   var topRows = Object.keys(top).sort(function(a,b){ return top[b]-top[a]; }).slice(0,8).map(function(k){ return '<tr><td>'+esc(k)+'</td><td class="n">'+top[k]+'</td></tr>'; }).join('');
@@ -552,7 +569,7 @@ function vStock(){
     var rows = c.items.map(function(item){
       var v = db.stock[skey(c.name, item.name)];
       var n = (v === undefined || v === null || v === '') ? null : +v;
-      return '<tr><td>'+esc(item.name)+'</td><td>'+(n===null?'<span class="pill" style="background:#eee;color:#666">Not tracked</span>':(n<=0?'<span class="pill void">Out</span>':(n<=5?'<span class="pill void">Low</span>':'<span class="pill cash">OK</span>')))+'</td>'
+      return '<tr><td>'+esc(item.name)+'</td><td>'+(n===null?'<span class="pill" style="background:#eee;color:#666">Not tracked</span>':(n<=0?'<span class="pill void">Out</span>':(n<=setg().lowAt?'<span class="pill void">Low</span>':'<span class="pill cash">OK</span>')))+'</td>'
         + '<td class="n"><input class="inp" type="number" min="0" inputmode="numeric" data-f="stock" data-k="'+esc(skey(c.name, item.name))+'" placeholder="-" value="'+(v===undefined||v===null?'':esc(v))+'" aria-label="Stock for '+esc(item.name)+'"></td></tr>';
     }).join('');
     return '<div class="tbl"><h3>'+esc(c.name)+'</h3><table><tbody>'+rows+'</tbody></table></div>';
@@ -565,16 +582,22 @@ function receiptText(s){
   function c(t){ return Array(Math.max(0, Math.floor((W - t.length)/2)) + 1).join(' ') + t; }
   function lr(a, b){ var sp = W - a.length - b.length; return a + Array(Math.max(1, sp) + 1).join(' ') + b; }
   var d = new Date(s.t);
-  L.push(c(SHOP.name.toUpperCase()), c('TAX INVOICE'), c(SHOP.trn), c(SHOP.tel), '');
+  var G = setg(), hasVat = s.vat > 0;
+  L.push(c(G.shop.toUpperCase()), c(hasVat ? 'TAX INVOICE' : 'RECEIPT'));
+  if (hasVat && G.trn) L.push(c('TRN: ' + G.trn));
+  if (G.tel) L.push(c(G.tel));
+  L.push('');
   L.push(lr('Bill #'+s.no, d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})), Array(W+1).join('-'));
   s.lines.forEach(function(l){
     L.push((l.name + (l.size ? ' (' + l.size + ')' : '')).slice(0, W));
     L.push(lr('  ' + l.qty + ' x ' + money(l.price), money(l.qty * l.price)));
   });
-  L.push(Array(W+1).join('-'), lr('Subtotal excl. VAT', money(s.total - vatOf(s.total))), lr('VAT 5%', money(vatOf(s.total))), lr('TOTAL AED', money(s.total)), '');
+  L.push(Array(W+1).join('-'));
+  if (hasVat) L.push(lr('Subtotal excl. VAT', money(s.total - s.vat)), lr('VAT ' + num(s.vatRate) + '%', money(s.vat)));
+  L.push(lr('TOTAL AED', money(s.total)), '');
   L.push(lr('Paid by ' + s.pay, money(s.pay === 'cash' ? s.tendered : s.total)));
   if (s.pay === 'cash') L.push(lr('Change', money(s.tendered - s.total)));
-  L.push('', c('Thank you! ' + SHOP.insta));
+  L.push('', c('Thank you!' + (G.insta ? ' ' + G.insta : '')));
   if (s.void) L.unshift(c('*** VOID ***'));
   return L.join('\n');
 }
@@ -608,7 +631,7 @@ var SCR = ['.items', '.cats', '.lines', '.page', '.ed .main', '.ed .list'], last
 function render(){
   var keep = {}; SCR.forEach(function(s){ var e = document.querySelector(s); if (e) keep[s] = [e.scrollTop, e.scrollLeft]; });
   var key = S.tab;
-  var body = S.tab === 'sale' ? vSale() : S.tab === 'sales' ? vSales() : S.tab === 'inv' ? vInv() : S.tab === 'stock' ? vStock() : vMenu();
+  var body = S.tab === 'sale' ? vSale() : S.tab === 'sales' ? vSales() : S.tab === 'inv' ? vInv() : S.tab === 'stock' ? vStock() : S.tab === 'settings' ? vSettings() : vMenu();
   document.getElementById('app').innerHTML = vHeader() + '<main>' + body + '</main>' + vSheets();
   SCR.forEach(function(s){ var e = document.querySelector(s), k = keep[s]; if (e && k && key === lastKey && !(s === '.items' && S.catChanged)){ e.scrollTop = k[0]; e.scrollLeft = k[1]; } });
   S.catChanged = false; lastKey = key;
@@ -617,7 +640,7 @@ function render(){
 
 function addLine(c, item, size){
   var left = stockLeft(c.name, item.name);
-  if (left !== null && inCart(c.name, item.name) >= left){ toast('Only ' + left + ' left in stock'); return; }
+  if (left !== null && !setg().allowZero && inCart(c.name, item.name) >= left){ toast('Only ' + left + ' left in stock'); return; }
   var label = size.label, price = priceOf(item, size);
   var f = S.cart.filter(function(l){ return l.cat === c.name && l.name === item.name && l.size === label && l.price === price; })[0];
   if (f) f.qty++; else S.cart.push({cat:c.name, name:item.name, size:label, price:price, qty:1});
@@ -625,8 +648,8 @@ function addLine(c, item, size){
 function finishSale(){
   if (db.day !== today()){ db.day = today(); db.counter = 0; }
   db.counter++;
-  var s = {id:Date.now(), no:db.counter, t:Date.now(), day:today(), lines:S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }), total:totalOf(S.cart), pay:S.pay, tendered:S.pay==='cash'?parseFloat(S.tendered):0, void:false};
-  s.lines.forEach(function(l){ var k = skey(l.cat, l.name), v = db.stock[k]; if (v !== undefined && v !== null && v !== '') db.stock[k] = Math.max(0, +v - l.qty); });
+  var s = {id:Date.now(), no:db.counter, t:Date.now(), day:today(), lines:S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }), total:totalOf(S.cart), pay:S.pay, tendered:S.pay==='cash'?parseFloat(S.tendered):0, void:false, vat:vatOf(totalOf(S.cart)), vatRate:setg().vat ? setg().rate : 0};
+  s.lines.forEach(function(l){ var k = skey(l.cat, l.name), v = db.stock[k]; if (v !== undefined && v !== null && v !== '') db.stock[k] = setg().allowZero ? +v - l.qty : Math.max(0, +v - l.qty); });
   db.sales.push(s); save();
   S.cart = []; S.pay = null; S.tendered = ''; S.receipt = s.id;
 }
@@ -637,6 +660,7 @@ document.addEventListener('input', function(e){
     var ch = document.querySelector('.change span:last-child'), ok = document.querySelector('[data-act=payok]');
     if (ch) ch.textContent = 'AED ' + ((!isNaN(v) && v >= total) ? money(v - total) : '-'); if (ok) ok.disabled = isNaN(v) || v < total; return; }
   var f = t.dataset && t.dataset.f;
+  if (f === 'set'){ var kk = t.dataset.k; db.settings[kk] = (kk === 'rate' || kk === 'lowAt') ? (parseFloat(t.value) || 0) : t.value; save(); return; }
   if (f === 'cnt'){ if (t.value === '') delete S.cnt[t.dataset.m]; else S.cnt[t.dataset.m] = t.value; return; }
   if (f === 'rqty'){ db.inv.recipes[t.dataset.k][+t.dataset.i].q = parseFloat(t.value) || 0; save(); return; }
   if (f === 'mname' || f === 'munit' || f === 'mcost' || f === 'mmin'){ var mm = mat(t.dataset.m);
@@ -690,7 +714,7 @@ document.addEventListener('click', function(e){
       if (c.sizes.length > 1) S.sheet = {cat:c.id, item:item.id}; else addLine(c, item, c.sizes[0]); break;
     case 'size': c = byId(menu, S.sheet.cat); addLine(c, byId(c.items, S.sheet.item), byId(c.sizes, d.z)); S.sheet = null; break;
     case 'closesheet': S.sheet = null; break;
-    case 'inc': var l = S.cart[+d.i], lf = stockLeft(l.cat, l.name); if (lf !== null && inCart(l.cat, l.name) >= lf) toast('Only ' + lf + ' left in stock'); else l.qty++; break;
+    case 'inc': var l = S.cart[+d.i], lf = stockLeft(l.cat, l.name); if (lf !== null && !setg().allowZero && inCart(l.cat, l.name) >= lf) toast('Only ' + lf + ' left in stock'); else l.qty++; break;
     case 'dec': S.cart[+d.i].qty--; if (S.cart[+d.i].qty <= 0) S.cart.splice(+d.i, 1); break;
     case 'rm': S.cart.splice(+d.i, 1); break;
     case 'clear': S.cart = []; break;
@@ -702,6 +726,8 @@ document.addEventListener('click', function(e){
     case 'view': S.receipt = +d.id; break;
     case 'print': try { window.print(); } catch(err){ toast('Printing is not available here'); } return;
     case 'range': S.range = d.id; break;
+    case 'tgvat': db.settings.vat = !db.settings.vat; save(); break;
+    case 'tgzero': db.settings.allowZero = !db.settings.allowZero; save(); break;
     case 'invtab': S.inv = d.id; S.matDel = null; break;
     case 'reccat': S.recCat = d.id; break;
     case 'addrec': db.inv.recipes[d.k] = db.inv.recipes[d.k] || []; db.inv.recipes[d.k].push({m:db.inv.materials[0].id, q:1}); save(); break;
