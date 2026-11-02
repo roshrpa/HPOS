@@ -255,7 +255,7 @@ function cat(name, ar, img, sz, items){ return {id:uid('c'), name:name, ar:ar||'
 
 function defaultMenu(){
   var m = [];
-  m.push(cat('Mini Melts Ice Cream','ميني ميلتس','mm_mix',[['Small',12],['Medium',17],['Large',22]],[
+  m.push(cat('Minimals Ice Cream','ميني ميلتس','mm_mix',[['Small',12],['Medium',17],['Large',22]],[
     it('Chocolate','شوكولاتة','mm_choc'), it('Blueberry','توت','mm_blue'), it('Mix Flavour','ميكسفلوفر','mm_mix'), it('Mango','مانجو','mm_mango'),
     it('Coffee','قهوة','mm_coffee'), it('Vanilla','فانيا','mm_vanilla'), it('Strawberry','الفراولة','mm_straw'), it('Pista','فستق','mm_pista')]));
   m.push(cat('Mini Shakes','ميني شيك','',[['',25]],[
@@ -314,7 +314,7 @@ function defaultMenu(){
   m.push(cb);
   var ct = cat('Catering Boxes','علبة تقديم','catering',[['',0]],[]);
   function tp(p){ var o = {}; o[ct.sizes[0].id] = p; return o; }
-  ct.items = [it('Mini Melts Catering Box Small (8 persons)','','catering',{prices:tp(99)}), it('Mini Melts Catering Box Big (25 persons)','','catering',{prices:tp(289)}),
+  ct.items = [it('Minimals Catering Box Small (8 persons)','','catering',{prices:tp(99)}), it('Minimals Catering Box Big (25 persons)','','catering',{prices:tp(289)}),
     it('Juice Box 12 bottles 330 ml','','catering',{desc:'2 Mojito, 2 Iced Tea, 8 Signature Collections Juices',prices:tp(150)}),
     it('Juice Box 12 bottles 200 ml','','catering',{desc:'2 Mojito, 2 Iced Tea, 8 Signature Collections Juices',prices:tp(100)})];
   m.push(ct);
@@ -334,6 +334,7 @@ var db, menu, pin;
   if (!db || !db.orders) db = {orders:[], counter:0, day:today()};
   try { menu = JSON.parse(lsGet(K_MENU)); } catch(e){}
   if (!menu || !menu.length) menu = defaultMenu();
+  menu.forEach(function(c){ if (c.name === 'Mini Melts Ice Cream') c.name = 'Minimals Ice Cream'; });
   pin = lsGet(K_PIN) || '1234';
 })();
 function saveOrders(){ lsSet(K_ORD, JSON.stringify(db)); }

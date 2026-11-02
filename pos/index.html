@@ -163,7 +163,7 @@ function cat(name, ar, img, sz, items){ return {id:uid('c'), name:name, ar:ar||'
 
 function defaultMenu(){
   var m = [];
-  m.push(cat('Mini Melts Ice Cream','ميني ميلتس','mm_mix',[['Small',12],['Medium',17],['Large',22]],[
+  m.push(cat('Minimals Ice Cream','ميني ميلتس','mm_mix',[['Small',12],['Medium',17],['Large',22]],[
     it('Chocolate','شوكولاتة','mm_choc'), it('Blueberry','توت','mm_blue'), it('Mix Flavour','ميكسفلوفر','mm_mix'), it('Mango','مانجو','mm_mango'),
     it('Coffee','قهوة','mm_coffee'), it('Vanilla','فانيا','mm_vanilla'), it('Strawberry','الفراولة','mm_straw'), it('Pista','فستق','mm_pista')]));
   m.push(cat('Mini Shakes','ميني شيك','',[['',25]],[
@@ -222,7 +222,7 @@ function defaultMenu(){
   m.push(cb);
   var ct = cat('Catering Boxes','علبة تقديم','catering',[['',0]],[]);
   function tp(p){ var o = {}; o[ct.sizes[0].id] = p; return o; }
-  ct.items = [it('Mini Melts Catering Box Small (8 persons)','','catering',{prices:tp(99)}), it('Mini Melts Catering Box Big (25 persons)','','catering',{prices:tp(289)}),
+  ct.items = [it('Minimals Catering Box Small (8 persons)','','catering',{prices:tp(99)}), it('Minimals Catering Box Big (25 persons)','','catering',{prices:tp(289)}),
     it('Juice Box 12 bottles 330 ml','','catering',{desc:'2 Mojito, 2 Iced Tea, 8 Signature Collections Juices',prices:tp(150)}),
     it('Juice Box 12 bottles 200 ml','','catering',{desc:'2 Mojito, 2 Iced Tea, 8 Signature Collections Juices',prices:tp(100)})];
   m.push(ct);
@@ -235,6 +235,7 @@ var VAT_RATE = 0.05;
 var SHOP = {name:'Hollywood Ice Creams', trn:'TRN: (add your tax number)', insta:'@hollywoodicecreams_ae', tel:'056 900 4121 / 07 236 1564'};
 var K_MENU = 'hollywood_pos_menu_v1';
 var menu = (function(){ try { var r = JSON.parse(localStorage.getItem(K_MENU)); if (r && r.length) return r; } catch(e){} return defaultMenu(); })();
+menu.forEach(function(c){ if (c.name === 'Mini Melts Ice Cream') c.name = 'Minimals Ice Cream'; });
 var saveT, dirty = false;
 function flushMenu(){ if (!dirty) return; dirty = false; try { localStorage.setItem(K_MENU, JSON.stringify(menu)); } catch(e){ toast('Could not save the menu. Storage is full or blocked.'); } }
 function saveMenu(){ dirty = true; clearTimeout(saveT); saveT = setTimeout(flushMenu, 300); }
@@ -251,19 +252,19 @@ function save(){ mem = db; try { localStorage.setItem(K, JSON.stringify(db)); } 
 function invDefault(){
   var now = Date.now();
   var M = [
-    ['mmcS','Mini Melts cup S','pcs',0.30,true,100,500],['mmcM','Mini Melts cup M','pcs',0.40,true,100,400],['mmcL','Mini Melts cup L','pcs',0.50,true,100,300],
+    ['mmcS','Minimals cup S','pcs',0.30,true,100,500],['mmcM','Minimals cup M','pcs',0.40,true,100,400],['mmcL','Minimals cup L','pcs',0.50,true,100,300],
     ['bkcS','Baskin cup S','pcs',0.30,true,100,500],['bkcM','Baskin cup M','pcs',0.40,true,100,400],['bkcL','Baskin cup L','pcs',0.50,true,100,300],
     ['jcR','Juice cup regular','pcs',0.50,true,100,400],['jcL','Juice cup large','pcs',0.65,true,100,300],
     ['cornM','Mr. Corn cup regular','pcs',0.40,true,50,200],['cornL','Mr. Corn cup large','pcs',0.50,true,50,200],['coffee','Coffee cup (hot drinks)','pcs',0.40,true,100,500],
     ['pcPlate','Pancake plate','pcs',0.60,true,50,200],['pcBox','Pancake box','pcs',1.50,true,20,100],['nPlate','Nachos plate','pcs',0.70,true,50,200],['acaiBowl','Acai bowl','pcs',0.80,true,30,150],
-    ['mmLid','Mini Melts lid (all sizes)','pcs',0.10,false,100,800],['bkLidS','Baskin lid S','pcs',0.10,false,100,500],['bkLidM','Baskin lid M','pcs',0.10,false,100,400],['bkLidL','Baskin lid L','pcs',0.12,false,100,300],
+    ['mmLid','Minimals lid (all sizes)','pcs',0.10,false,100,800],['bkLidS','Baskin lid S','pcs',0.10,false,100,500],['bkLidM','Baskin lid M','pcs',0.10,false,100,400],['bkLidL','Baskin lid L','pcs',0.12,false,100,300],
     ['lidR','Juice lid regular','pcs',0.15,false,100,600],['lidL','Juice lid large','pcs',0.18,false,100,500],['hotLid','Hot cup lid','pcs',0.15,false,100,500],['bowlLid','Acai bowl lid','pcs',0.30,false,30,150]
   ];
   var R = {};
   function r(c, s, list){ R[c + '|' + s] = list.map(function(x){ return {m:x[0], q:x[1]}; }); }
-  r('Mini Melts Ice Cream','Small',[['mmcS',1],['mmLid',1]]);
-  r('Mini Melts Ice Cream','Medium',[['mmcM',1],['mmLid',1]]);
-  r('Mini Melts Ice Cream','Large',[['mmcL',1],['mmLid',1]]);
+  r('Minimals Ice Cream','Small',[['mmcS',1],['mmLid',1]]);
+  r('Minimals Ice Cream','Medium',[['mmcM',1],['mmLid',1]]);
+  r('Minimals Ice Cream','Large',[['mmcL',1],['mmLid',1]]);
   r('Baskin Robbins','Small',[['bkcS',1],['bkLidS',1]]);
   r('Baskin Robbins','Medium',[['bkcM',1],['bkLidM',1]]);
   r('Baskin Robbins','Large',[['bkcL',1],['bkLidL',1]]);
@@ -284,11 +285,11 @@ function invDefault(){
   r('Mr. Corn','Large',[['cornL',1]]);
   var base = {};
   M.forEach(function(x){ base[x[0]] = {t:now, q:x[6]}; });
-  return {v:6, materials:M.map(function(x){ return {id:x[0], name:x[1], unit:x[2], cost:x[3], cup:x[4], min:x[5]}; }), recipes:R, base:base, purchases:[], waste:[], counts:[]};
+  return {v:7, materials:M.map(function(x){ return {id:x[0], name:x[1], unit:x[2], cost:x[3], cup:x[4], min:x[5]}; }), recipes:R, base:base, purchases:[], waste:[], counts:[]};
 }
-if (!db.inv || db.inv.v !== 6) db.inv = invDefault();
+if (!db.inv || db.inv.v !== 7) db.inv = invDefault();
 function num(n){ return Math.round(n * 100) / 100; }
-function rkey(cat, size){ return cat + '|' + (size || ''); }
+function rkey(cat, size){ return (cat === 'Mini Melts Ice Cream' ? 'Minimals Ice Cream' : cat) + '|' + (size || ''); }
 function mat(id){ return byId(db.inv.materials, id); }
 function usageMap(){
   var u = {};
