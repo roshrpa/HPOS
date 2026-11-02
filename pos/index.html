@@ -409,7 +409,7 @@ function invMat(){
     + '<div class="tbl"><table><thead><tr><th>Name</th><th>Unit</th><th class="n">Cost / unit</th><th class="n">Low at</th><th></th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div><button class="btn primary sm" data-act="addmat">+ Add material</button>';
 }
 
-var S = {inv:'over', cnt:{}, lastCount:null, recCat:null, matDel:null, edCat:null, del:null, resetAsk:false, imgTarget:null, tab:'sale', cat:menu[0].id, cart:[], sheet:null, pay:null, tendered:'', receipt:null, range:'today', voidAsk:null};
+var S = {disc:null, discForm:null, voidForm:null, inv:'over', cnt:{}, lastCount:null, recCat:null, matDel:null, edCat:null, del:null, resetAsk:false, imgTarget:null, tab:'sale', cat:menu[0].id, cart:[], sheet:null, pay:null, tendered:'', receipt:null, range:'today', voidAsk:null};
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function byId(a, id){ return a.filter(function(x){ return x.id === id; })[0]; }
 function src(x){ return x ? (IMGS[x] || x) : ''; }
@@ -419,6 +419,16 @@ function priceOf(item, size){ var o = item.prices && item.prices[size.id]; retur
 function skey(cat, name){ return cat + '|' + name; }
 function totalOf(lines){ return lines.reduce(function(a,l){ return a + l.qty * l.price; }, 0); }
 function setg(){ return db.settings; }
+var VOID_REASONS = ['Customer cancelled the order','Wrong item entered','Wrong payment method','Duplicate bill','Item not available','Staff mistake','Other (write the reason)'];
+var DISC_REASONS = ['Promotion or offer','Loyal customer','Customer complaint','Spilled or damaged item','Manager approved','Staff or family','Other (write the reason)'];
+function round2(n){ return Math.round(n * 100) / 100; }
+function discAmt(){
+  if (!S.disc) return 0;
+  var sub = totalOf(S.cart), v = parseFloat(S.disc.val) || 0;
+  return Math.min(round2(S.disc.type === 'pct' ? sub * v / 100 : v), sub);
+}
+function billTotal(){ return totalOf(S.cart) - discAmt(); }
+function reasonOk(f){ return !!f.reason && (f.reason.indexOf('Other') !== 0 || f.note.trim().length > 2); }
 function vatRate(){ return setg().vat ? (parseFloat(setg().rate) || 0) / 100 : 0; }
 function vatOf(total){ var r = vatRate(); return total * r / (1 + r); }
 function nextNo(){ return (db.day === today() ? db.counter : 0) + 1; }
@@ -526,7 +536,7 @@ function vSale(){
       + (avail !== null ? '<span class="stk'+(avail<=setg().lowAt?' low':'')+'">'+avail+' left</span>' : '') + '</div>'
       + (out ? '<div class="soldout">Sold out</div>' : '') + '</button>';
   }).join('');
-  var total = totalOf(S.cart), vat = vatOf(total);
+  var sub0 = totalOf(S.cart), dsc = discAmt(), total = sub0 - dsc, vat = vatOf(total);
   var lines = S.cart.length ? S.cart.map(function(l, i){
     return '<div class="line"><div class="t"><b>'+(l.size?'<span class="size">'+esc(l.size)+'</span>':'')+esc(l.name)+'</b><span>AED '+money(l.price)+' · '+esc(l.cat)+'</span></div>'
       + '<div class="qty"><button data-act="dec" data-i="'+i+'" aria-label="Less">−</button><output>'+l.qty+'</output><button data-act="inc" data-i="'+i+'" aria-label="More">+</button></div>'
@@ -536,9 +546,10 @@ function vSale(){
   return '<div class="sale"><nav class="rail" aria-label="Categories">'+cats+'</nav><section class="menu"><div class="items">'+items+'</div></section>'
     + '<aside class="panel"><h2>Bill #'+nextNo()+'<small>'+S.cart.reduce(function(a,l){return a+l.qty;},0)+' items</small></h2><div class="lines">'+lines+'</div>'
     + '<div class="foot">'+(setg().vat ? '<div class="sum"><span>Subtotal (excl. VAT)</span><span>'+money(total-vat)+'</span></div><div class="sum"><span>VAT '+num(setg().rate)+'%</span><span>'+money(vat)+'</span></div>' : '')
+    + (dsc > 0 ? '<div class="sum"><span>Subtotal</span><span>'+money(sub0)+'</span></div><div class="sum" style="color:var(--pink-dk);font-weight:600"><span>Discount <button class="link" style="min-height:28px" data-act="discoff">remove</button></span><span>−'+money(dsc)+'</span></div>' : '')
     + '<div class="tot"><span>Total</span><span>AED '+money(total)+'</span></div>'
     + '<div class="row2"><button class="btn primary" data-act="pay" data-m="cash"'+(has?'':' disabled')+'>Cash</button><button class="btn plum" data-act="pay" data-m="card"'+(has?'':' disabled')+'>Card</button></div>'
-    + (has ? '<button class="link" data-act="clear">Clear bill</button>' : '') + '</div></aside></div>';
+    + (has ? '<div class="row2"><button class="btn ghost sm" data-act="discopen">'+(dsc>0?'Change discount':'Discount')+'</button><button class="btn ghost sm" data-act="clear">Clear bill</button></div>' : '') + '</div></aside></div>';
 }
 
 function periodSales(){
@@ -547,8 +558,9 @@ function periodSales(){
 function vSales(){
   var list = periodSales(), ok = list.filter(function(s){ return !s.void; });
   var tot = ok.reduce(function(a,s){ return a + s.total; }, 0), cash = ok.filter(function(s){ return s.pay==='cash'; }).reduce(function(a,s){ return a + s.total; }, 0);
+  var discTot = ok.reduce(function(a,s){ return a + (s.discount || 0); }, 0), voids = list.filter(function(s){ return s.void; }), voidTot = voids.reduce(function(a,s){ return a + s.total; }, 0);
   var vatTot = ok.reduce(function(a,s){ return a + (s.vat || 0); }, 0);
-  var tiles = [['Bills', ok.length], ['Sales (AED)', money(tot)]].concat(vatTot > 0 ? [['VAT (AED)', money(vatTot)]] : []).concat([ ['Cash', money(cash)], ['Card', money(tot - cash)]])
+  var tiles = [['Bills', ok.length], ['Sales (AED)', money(tot)]].concat(vatTot > 0 ? [['VAT (AED)', money(vatTot)]] : []).concat([ ['Cash', money(cash)], ['Card', money(tot - cash)]]).concat(discTot > 0 ? [['Discounts (AED)', money(discTot)]] : []).concat(voids.length ? [['Cancelled bills', voids.length + ' · ' + money(voidTot)]] : [])
     .map(function(t){ return '<div class="tile"><small>'+t[0]+'</small><b>'+t[1]+'</b></div>'; }).join('');
   var top = {}; ok.forEach(function(s){ s.lines.forEach(function(l){ var k = l.name + (l.size ? ' ('+l.size+')' : '') + ' · ' + l.cat; top[k] = (top[k]||0) + l.qty; }); });
   var topRows = Object.keys(top).sort(function(a,b){ return top[b]-top[a]; }).slice(0,8).map(function(k){ return '<tr><td>'+esc(k)+'</td><td class="n">'+top[k]+'</td></tr>'; }).join('');
@@ -556,13 +568,15 @@ function vSales(){
     var t = new Date(s.t).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     var q = s.lines.reduce(function(a,l){ return a+l.qty; }, 0);
     var ask = S.voidAsk === s.id;
-    return '<tr class="'+(s.void?'void':'')+'"><td>#'+s.no+'</td><td>'+t+'</td><td>'+q+' items</td><td>'+(s.void?'<span class="pill void">Void</span>':'<span class="pill '+s.pay+'">'+s.pay+'</span>')+'</td><td class="n">'+money(s.total)+'</td>'
+    return '<tr class="'+(s.void?'void':'')+'"><td>#'+s.no+'</td><td>'+t+'</td><td>'+q+' items</td><td>'+(s.void?'<span class="pill void">Cancelled</span><div style="font-size:12px;color:var(--muted);text-decoration:none;margin-top:2px">'+esc(s.voidReason||'')+'</div>':'<span class="pill '+s.pay+'">'+s.pay+'</span>')+'</td><td class="n">'+money(s.total)+'</td>'
       + '<td class="n"><button class="btn ghost sm" data-act="view" data-id="'+s.id+'">Receipt</button> '
-      + (s.void ? '' : (ask ? '<button class="btn primary sm" data-act="voidyes" data-id="'+s.id+'">Confirm void</button> <button class="btn ghost sm" data-act="voidno">Keep</button>' : '<button class="btn danger sm" data-act="voidask" data-id="'+s.id+'">Void</button>')) + '</td></tr>';
+      + (s.void ? '' : '<button class="btn danger sm" data-act="voidopen" data-id="'+s.id+'">Cancel bill</button>') + '</td></tr>';
   }).join('');
   function seg(id, label){ return '<button data-act="range" data-id="'+id+'" aria-pressed="'+(S.range===id)+'">'+label+'</button>'; }
   return '<div class="page"><div class="bar"><div class="seg">'+seg('today','Today')+seg('all','All')+'</div></div><div class="tiles">'+tiles+'</div>'
     + '<div class="tbl"><h3>Top items</h3><table><tbody>'+(topRows||'<tr><td>No sales yet.</td></tr>')+'</tbody></table></div>'
+    + (voids.length ? '<div class="tbl"><h3>Cancelled bills</h3><table><thead><tr><th>No.</th><th>Time</th><th>Reason</th><th class="n">AED</th></tr></thead><tbody>'+voids.slice().reverse().map(function(s){ return '<tr><td>#'+s.no+'</td><td>'+fdate(s.voidT || s.t)+'</td><td>'+esc(s.voidReason||'')+(s.voidNote?' <span style="color:var(--muted)">· '+esc(s.voidNote)+'</span>':'')+'</td><td class="n">'+money(s.total)+'</td></tr>'; }).join('')+'</tbody></table></div>' : '')
+    + (ok.some(function(s){ return s.discount > 0; }) ? '<div class="tbl"><h3>Discounts given</h3><table><thead><tr><th>No.</th><th>Time</th><th>Reason</th><th class="n">Before</th><th class="n">Discount</th></tr></thead><tbody>'+ok.filter(function(s){ return s.discount > 0; }).reverse().map(function(s){ return '<tr><td>#'+s.no+'</td><td>'+fdate(s.t)+'</td><td>'+esc(s.discReason||'')+(s.discNote?' <span style="color:var(--muted)">· '+esc(s.discNote)+'</span>':'')+'</td><td class="n">'+money(s.subtotal)+'</td><td class="n">'+money(s.discount)+'</td></tr>'; }).join('')+'</tbody></table></div>' : '')
     + '<div class="tbl"><h3>Bills</h3><table><thead><tr><th>No.</th><th>Time</th><th>Items</th><th>Payment</th><th class="n">AED</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="6">No bills yet.</td></tr>')+'</tbody></table></div></div>';
 }
 
@@ -595,6 +609,7 @@ function receiptText(s){
     L.push(lr('  ' + l.qty + ' x ' + money(l.price), money(l.qty * l.price)));
   });
   L.push(Array(W+1).join('-'));
+  if (s.discount > 0) L.push(lr('Subtotal', money(s.subtotal)), lr('Discount', '-' + money(s.discount)));
   if (hasVat) L.push(lr('Subtotal excl. VAT', money(s.total - s.vat)), lr('VAT ' + num(s.vatRate) + '%', money(s.vat)));
   L.push(lr('TOTAL AED', money(s.total)), '');
   L.push(lr('Paid by ' + s.pay, money(s.pay === 'cash' ? s.tendered : s.total)));
@@ -611,8 +626,26 @@ function vSheets(){
       + c.sizes.map(function(z){ return '<button class="sizebtn" data-act="size" data-z="'+z.id+'"><b>'+esc(z.label)+'</b><span>AED '+money(priceOf(item, z))+'</span></button>'; }).join('')
       + '</div><button class="btn ghost" style="width:100%" data-act="closesheet">Cancel</button></div></div>';
   }
+  if (S.voidForm){
+    var vf = S.voidForm, vs = byId(db.sales, vf.id);
+    if (vs) return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Cancel bill"><h3>Cancel bill #'+vs.no+'</h3><p>AED '+money(vs.total)+'. A reason is required and appears in the report.</p>'
+      + '<label class="fld">Reason<select id="vreason" class="inp" data-f="vreason"><option value="">Choose a reason</option>'+VOID_REASONS.map(function(r){ return '<option'+(r===vf.reason?' selected':'')+'>'+esc(r)+'</option>'; }).join('')+'</select></label>'
+      + '<label class="fld" style="margin-top:10px">Note'+(vf.reason.indexOf('Other')===0?' (required)':' (optional)')+'<input id="vnote" class="inp" data-f="vnote" value="'+esc(vf.note)+'" autocomplete="off"></label>'
+      + '<div class="btns"><button class="btn ghost" data-act="voidclose">Keep the bill</button><button class="btn primary" data-act="voidyes"'+(reasonOk(vf)?'':' disabled')+'>Cancel bill</button></div></div></div>';
+  }
+  if (S.discForm){
+    var df = S.discForm, sb = totalOf(S.cart), dv = parseFloat(df.val) || 0, dam = Math.min(round2(df.type === 'pct' ? sb * dv / 100 : dv), sb);
+    return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Discount"><h3>Discount</h3><p>Bill total AED '+money(sb)+'. A reason is required and appears in the report.</p>'
+      + '<div class="seg" style="margin-bottom:10px"><button data-act="dtype" data-id="pct" aria-pressed="'+(df.type==='pct')+'">Percent %</button><button data-act="dtype" data-id="amt" aria-pressed="'+(df.type==='amt')+'">Amount AED</button></div>'
+      + '<input id="dval" class="inp" type="number" min="0" step="any" inputmode="decimal" placeholder="'+(df.type==='pct'?'Percent':'Amount')+'" value="'+esc(df.val)+'">'
+      + '<div class="quick">'+(df.type==='pct' ? [5,10,15,20].map(function(v){ return '<button data-act="dquick" data-v="'+v+'">'+v+'%</button>'; }).join('') : [2,5,10,20].map(function(v){ return '<button data-act="dquick" data-v="'+v+'">'+v+'</button>'; }).join(''))+'</div>'
+      + '<label class="fld">Reason<select id="dreason" class="inp" data-f="dreason"><option value="">Choose a reason</option>'+DISC_REASONS.map(function(r){ return '<option'+(r===df.reason?' selected':'')+'>'+esc(r)+'</option>'; }).join('')+'</select></label>'
+      + '<label class="fld" style="margin-top:10px">Note'+(df.reason.indexOf('Other')===0?' (required)':' (optional)')+'<input id="dnote" class="inp" data-f="dnote" value="'+esc(df.note)+'" autocomplete="off"></label>'
+      + '<div class="change"><span>New total</span><span id="dnew">AED '+money(sb - dam)+'</span></div>'
+      + '<div class="btns"><button class="btn ghost" data-act="discclose">Back</button><button class="btn primary" data-act="discapply"'+((dv > 0 && reasonOk(df)) ? '' : ' disabled')+'>Apply discount</button></div></div></div>';
+  }
   if (S.pay){
-    var total = totalOf(S.cart), t = parseFloat(S.tendered), ch = isNaN(t) ? 0 : t - total;
+    var total = billTotal(), t = parseFloat(S.tendered), ch = isNaN(t) ? 0 : t - total;
     if (S.pay === 'cash') return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Cash payment"><h3>Cash</h3><p>Total AED '+money(total)+'</p>'
       + '<input id="tender" class="inp" type="number" inputmode="decimal" placeholder="Amount received" value="'+esc(S.tendered)+'">'
       + '<div class="quick"><button data-act="quick" data-v="'+total+'">Exact</button>'+[10,20,50,100,200,500].map(function(v){ return '<button data-act="quick" data-v="'+v+'">'+v+'</button>'; }).join('')+'</div>'
@@ -629,8 +662,10 @@ function vSheets(){
   return '';
 }
 
+function normalizeDisc(){ if (!S.cart.length){ S.disc = null; } }
 var SCR = ['.items', '.cats', '.rail', '.lines', '.page', '.ed .main', '.ed .list'], lastKey = '';
 function render(){
+  normalizeDisc();
   var keep = {}; SCR.forEach(function(s){ var e = document.querySelector(s); if (e) keep[s] = [e.scrollTop, e.scrollLeft]; });
   var key = S.tab;
   var body = S.tab === 'sale' ? vSale() : S.tab === 'sales' ? vSales() : S.tab === 'inv' ? vInv() : S.tab === 'stock' ? vStock() : S.tab === 'settings' ? vSettings() : vMenu();
@@ -650,18 +685,21 @@ function addLine(c, item, size){
 function finishSale(){
   if (db.day !== today()){ db.day = today(); db.counter = 0; }
   db.counter++;
-  var s = {id:Date.now(), no:db.counter, t:Date.now(), day:today(), lines:S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }), total:totalOf(S.cart), pay:S.pay, tendered:S.pay==='cash'?parseFloat(S.tendered):0, void:false, vat:vatOf(totalOf(S.cart)), vatRate:setg().vat ? setg().rate : 0};
+  var s = {id:Date.now(), no:db.counter, t:Date.now(), day:today(), lines:S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }), subtotal:totalOf(S.cart), discount:discAmt(), discReason:S.disc ? S.disc.reason : '', discNote:S.disc ? S.disc.note : '', total:billTotal(), pay:S.pay, tendered:S.pay==='cash'?parseFloat(S.tendered):0, void:false, vat:vatOf(billTotal()), vatRate:setg().vat ? setg().rate : 0};
   s.lines.forEach(function(l){ var k = skey(l.cat, l.name), v = db.stock[k]; if (v !== undefined && v !== null && v !== '') db.stock[k] = setg().allowZero ? +v - l.qty : Math.max(0, +v - l.qty); });
   db.sales.push(s); save();
-  S.cart = []; S.pay = null; S.tendered = ''; S.receipt = s.id;
+  S.disc = null; S.cart = []; S.pay = null; S.tendered = ''; S.receipt = s.id;
 }
 
 document.addEventListener('input', function(e){
   var t = e.target;
-  if (t.id === 'tender'){ S.tendered = t.value; var total = totalOf(S.cart), v = parseFloat(t.value);
+  if (t.id === 'tender'){ S.tendered = t.value; var total = billTotal(), v = parseFloat(t.value);
     var ch = document.querySelector('.change span:last-child'), ok = document.querySelector('[data-act=payok]');
     if (ch) ch.textContent = 'AED ' + ((!isNaN(v) && v >= total) ? money(v - total) : '-'); if (ok) ok.disabled = isNaN(v) || v < total; return; }
   var f = t.dataset && t.dataset.f;
+  if (f === 'vnote' && S.voidForm){ S.voidForm.note = t.value; var vb = document.querySelector('[data-act=voidyes]'); if (vb) vb.disabled = !reasonOk(S.voidForm); return; }
+  if (t.id === 'dval' && S.discForm){ S.discForm.val = t.value; discRefresh(); return; }
+  if (f === 'dnote' && S.discForm){ S.discForm.note = t.value; discRefresh(); return; }
   if (f === 'set'){ var kk = t.dataset.k; db.settings[kk] = (kk === 'rate' || kk === 'lowAt') ? (parseFloat(t.value) || 0) : t.value; save(); return; }
   if (f === 'cnt'){ if (t.value === '') delete S.cnt[t.dataset.m]; else S.cnt[t.dataset.m] = t.value; return; }
   if (f === 'rqty'){ db.inv.recipes[t.dataset.k][+t.dataset.i].q = parseFloat(t.value) || 0; save(); return; }
@@ -680,8 +718,16 @@ document.addEventListener('input', function(e){
   }
   if (t.dataset && t.dataset.f === 'stock'){ if (t.value === '') delete db.stock[t.dataset.k]; else db.stock[t.dataset.k] = Math.max(0, parseInt(t.value, 10) || 0); save(); }
 });
+function discRefresh(){
+  var df = S.discForm; if (!df) return;
+  var sb = totalOf(S.cart), dv = parseFloat(df.val) || 0, dam = Math.min(round2(df.type === 'pct' ? sb * dv / 100 : dv), sb);
+  var nw = document.getElementById('dnew'); if (nw) nw.textContent = 'AED ' + money(sb - dam);
+  var ap = document.querySelector('[data-act=discapply]'); if (ap) ap.disabled = !(dv > 0 && reasonOk(df));
+}
 document.addEventListener('change', function(e){
   var t = e.target;
+  if (t.dataset && t.dataset.f === 'vreason' && S.voidForm){ S.voidForm.reason = t.value; render(); return; }
+  if (t.dataset && t.dataset.f === 'dreason' && S.discForm){ S.discForm.reason = t.value; render(); return; }
   if (t.dataset && t.dataset.f === 'rmat'){ db.inv.recipes[t.dataset.k][+t.dataset.i].m = t.value; save(); }
   if (t.dataset && t.dataset.f === 'mcup'){ mat(t.dataset.m).cup = t.checked; save(); }
   if (t.dataset && t.dataset.f === 'ioff'){ byId(edCat().items, t.dataset.id).off = t.checked; saveMenu(); }
@@ -723,7 +769,7 @@ document.addEventListener('click', function(e){
     case 'pay': if (S.cart.length){ S.pay = d.m; S.tendered = ''; } break;
     case 'paycancel': S.pay = null; break;
     case 'quick': S.tendered = String(d.v); break;
-    case 'payok': if (S.pay === 'cash' && !(parseFloat(S.tendered) >= totalOf(S.cart))) break; finishSale(); break;
+    case 'payok': if (S.pay === 'cash' && !(parseFloat(S.tendered) >= billTotal())) break; finishSale(); break;
     case 'closerec': S.receipt = null; break;
     case 'view': S.receipt = +d.id; break;
     case 'print': try { window.print(); } catch(err){ toast('Printing is not available here'); } return;
@@ -780,11 +826,17 @@ document.addEventListener('click', function(e){
     case 'resetask': S.resetAsk = true; break;
     case 'resetno': S.resetAsk = false; break;
     case 'resetyes': menu = defaultMenu(); try { localStorage.removeItem(K_MENU); } catch(err){} S.edCat = menu[0].id; S.cat = menu[0].id; S.cart = []; S.resetAsk = false; toast('Original menu restored'); break;
-    case 'voidask': S.voidAsk = +d.id; break;
-    case 'voidno': S.voidAsk = null; break;
-    case 'voidyes': var s = byId(db.sales, +d.id);
-      if (s && !s.void){ s.void = true; s.lines.forEach(function(l){ var k = skey(l.cat, l.name), v = db.stock[k]; if (v !== undefined && v !== null && v !== '') db.stock[k] = +v + l.qty; }); save(); toast('Bill #' + s.no + ' voided'); }
-      S.voidAsk = null; break;
+    case 'voidopen': S.voidForm = {id:+d.id, reason:'', note:''}; break;
+    case 'voidclose': S.voidForm = null; break;
+    case 'discopen': S.discForm = S.disc ? {type:S.disc.type, val:S.disc.val, reason:S.disc.reason, note:S.disc.note} : {type:'pct', val:'', reason:'', note:''}; break;
+    case 'discclose': S.discForm = null; break;
+    case 'dtype': S.discForm.type = d.id; S.discForm.val = ''; break;
+    case 'dquick': S.discForm.val = String(d.v); break;
+    case 'discapply': if (S.discForm && reasonOk(S.discForm) && parseFloat(S.discForm.val) > 0){ S.disc = {type:S.discForm.type, val:S.discForm.val, reason:S.discForm.reason, note:S.discForm.note.trim()}; S.discForm = null; toast('Discount applied'); } break;
+    case 'discoff': S.disc = null; break;
+    case 'voidyes': var s = S.voidForm && byId(db.sales, S.voidForm.id);
+      if (s && !s.void && reasonOk(S.voidForm)){ s.void = true; s.voidReason = S.voidForm.reason; s.voidNote = S.voidForm.note.trim(); s.voidT = Date.now(); s.lines.forEach(function(l){ var k = skey(l.cat, l.name), v = db.stock[k]; if (v !== undefined && v !== null && v !== '') db.stock[k] = +v + l.qty; }); save(); toast('Bill #' + s.no + ' cancelled'); S.voidForm = null; }
+      break;
   }
   render();
 });
