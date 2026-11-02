@@ -252,13 +252,13 @@ function save(){ mem = db; try { localStorage.setItem(K, JSON.stringify(db)); } 
 function invDefault(){
   var now = Date.now();
   var M = [
-    ['mmcS','Minimelts cup S','pcs',0.30,true,100,500],['mmcM','Minimelts cup M','pcs',0.40,true,100,400],['mmcL','Minimelts cup L','pcs',0.50,true,100,300],
-    ['bkcS','Baskin cup S','pcs',0.30,true,100,500],['bkcM','Baskin cup M','pcs',0.40,true,100,400],['bkcL','Baskin cup L','pcs',0.50,true,100,300],
-    ['jcR','Juice cup regular','pcs',0.50,true,100,400],['jcL','Juice cup large','pcs',0.65,true,100,300],
-    ['cornM','Mr. Corn cup regular','pcs',0.40,true,50,200],['cornL','Mr. Corn cup large','pcs',0.50,true,50,200],['coffee','Coffee cup (hot drinks)','pcs',0.40,true,100,500],
-    ['pcPlate','Pancake plate','pcs',0.60,true,50,200],['pcBox','Pancake box','pcs',1.50,true,20,100],['nPlate','Nachos plate','pcs',0.70,true,50,200],['acaiBowl','Acai bowl','pcs',0.80,true,30,150],
-    ['mmLid','Minimelts lid (all sizes)','pcs',0.10,false,100,800],['bkLidS','Baskin lid S','pcs',0.10,false,100,500],['bkLidM','Baskin lid M','pcs',0.10,false,100,400],['bkLidL','Baskin lid L','pcs',0.12,false,100,300],
-    ['lidR','Juice lid regular','pcs',0.15,false,100,600],['lidL','Juice lid large','pcs',0.18,false,100,500],['hotLid','Hot cup lid','pcs',0.15,false,100,500],['bowlLid','Acai bowl lid','pcs',0.30,false,30,150]
+    ['mmcS','Minimelts cup S','pcs',0.30,true,20,100],['mmcM','Minimelts cup M','pcs',0.40,true,20,100],['mmcL','Minimelts cup L','pcs',0.50,true,20,100],
+    ['bkcS','Baskin cup S','pcs',0.30,true,20,100],['bkcM','Baskin cup M','pcs',0.40,true,20,100],['bkcL','Baskin cup L','pcs',0.50,true,20,100],
+    ['jcR','Juice cup regular','pcs',0.50,true,20,100],['jcL','Juice cup large','pcs',0.65,true,20,100],
+    ['cornM','Mr. Corn cup regular','pcs',0.40,true,20,100],['cornL','Mr. Corn cup large','pcs',0.50,true,20,100],['coffee','Coffee cup (hot drinks)','pcs',0.40,true,20,100],
+    ['pcPlate','Pancake plate','pcs',0.60,true,20,100],['pcBox','Pancake box','pcs',1.50,true,20,100],['nPlate','Nachos plate','pcs',0.70,true,20,100],['acaiBowl','Acai bowl','pcs',0.80,true,20,100],
+    ['mmLid','Minimelts lid (all sizes)','pcs',0.10,false,20,100],['bkLidS','Baskin lid S','pcs',0.10,false,20,100],['bkLidM','Baskin lid M','pcs',0.10,false,20,100],['bkLidL','Baskin lid L','pcs',0.12,false,20,100],
+    ['lidR','Juice lid regular','pcs',0.15,false,20,100],['lidL','Juice lid large','pcs',0.18,false,20,100],['hotLid','Hot cup lid','pcs',0.15,false,20,100],['bowlLid','Acai bowl lid','pcs',0.30,false,20,100]
   ];
   var R = {};
   function r(c, s, list){ R[c + '|' + s] = list.map(function(x){ return {m:x[0], q:x[1]}; }); }
@@ -285,9 +285,9 @@ function invDefault(){
   r('Mr. Corn','Large',[['cornL',1]]);
   var base = {};
   M.forEach(function(x){ base[x[0]] = {t:now, q:x[6]}; });
-  return {v:8, materials:M.map(function(x){ return {id:x[0], name:x[1], unit:x[2], cost:x[3], cup:x[4], min:x[5]}; }), recipes:R, base:base, purchases:[], waste:[], counts:[]};
+  return {v:9, materials:M.map(function(x){ return {id:x[0], name:x[1], unit:x[2], cost:x[3], cup:x[4], min:x[5]}; }), recipes:R, base:base, purchases:[], waste:[], counts:[]};
 }
-if (!db.inv || db.inv.v !== 8) db.inv = invDefault();
+if (!db.inv || db.inv.v !== 9) db.inv = invDefault();
 /* Test start: every menu item begins with 100 in stock (runs once per browser) */
 if (db.stockSeed !== 1){ db.stock = {}; menu.forEach(function(c){ c.items.forEach(function(it0){ db.stock[skey(c.name, it0.name)] = 100; }); }); db.stockSeed = 1; save(); }
 function num(n){ return Math.round(n * 100) / 100; }
