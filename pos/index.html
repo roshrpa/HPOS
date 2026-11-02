@@ -251,28 +251,41 @@ function save(){ mem = db; try { localStorage.setItem(K, JSON.stringify(db)); } 
 function invDefault(){
   var now = Date.now();
   var M = [
-    ['cupS','Ice cream cup S','pcs',0.30,true,100,500],['cupM','Ice cream cup M','pcs',0.40,true,100,400],['cupL','Ice cream cup L','pcs',0.50,true,100,300],
-    ['shk','Shake cup','pcs',0.60,true,100,300],['juice','Juice / mojito cup','pcs',0.60,true,100,300],
-    ['lid','Lid','pcs',0.15,false,100,600],['straw','Straw','pcs',0.05,false,100,600],['spoon','Spoon','pcs',0.05,false,200,1500],
+    ['mmcS','Mini Melts cup S','pcs',0.30,true,100,500],['mmcM','Mini Melts cup M','pcs',0.40,true,100,400],['mmcL','Mini Melts cup L','pcs',0.50,true,100,300],
+    ['bkcS','Baskin cup S','pcs',0.30,true,100,500],['bkcM','Baskin cup M','pcs',0.40,true,100,400],['bkcL','Baskin cup L','pcs',0.50,true,100,300],
+    ['shk','Shake cup','pcs',0.60,true,100,300],['jcR','Juice cup regular','pcs',0.50,true,100,400],['jcL','Juice cup large','pcs',0.65,true,100,300],
+    ['cornM','Mr. Corn cup M','pcs',0.40,true,50,200],['cornL','Mr. Corn cup L','pcs',0.50,true,50,200],
+    ['pcPlate','Pancake plate','pcs',0.60,true,50,200],['pcBox','Pancake box','pcs',1.50,true,20,100],['nPlate','Nachos plate','pcs',0.70,true,50,200],['acaiBowl','Acai bowl','pcs',0.80,true,30,150],
+    ['lid','Lid','pcs',0.15,false,100,1000],['straw','Straw','pcs',0.05,false,100,1000],['spoon','Spoon','pcs',0.05,false,200,1500],
     ['mm','Mini Melts beads','g',0.03,false,3000,20000],['bk','Baskin ice cream','scoop',1.8,false,20,120],['milk','Milk','L',5,false,10,40]
   ];
   var R = {};
   function r(c, s, list){ R[c + '|' + s] = list.map(function(x){ return {m:x[0], q:x[1]}; }); }
-  r('Mini Melts Ice Cream','Small',[['cupS',1],['spoon',1],['mm',100]]);
-  r('Mini Melts Ice Cream','Medium',[['cupM',1],['spoon',1],['mm',150]]);
-  r('Mini Melts Ice Cream','Large',[['cupL',1],['spoon',1],['mm',200]]);
-  r('Baskin Robbins','Small',[['cupS',1],['spoon',1],['bk',1]]);
-  r('Baskin Robbins','Medium',[['cupM',1],['spoon',1],['bk',2]]);
-  r('Baskin Robbins','Large',[['cupL',1],['spoon',1],['bk',3]]);
+  r('Mini Melts Ice Cream','Small',[['mmcS',1],['spoon',1],['mm',100]]);
+  r('Mini Melts Ice Cream','Medium',[['mmcM',1],['spoon',1],['mm',150]]);
+  r('Mini Melts Ice Cream','Large',[['mmcL',1],['spoon',1],['mm',200]]);
+  r('Baskin Robbins','Small',[['bkcS',1],['spoon',1],['bk',1]]);
+  r('Baskin Robbins','Medium',[['bkcM',1],['spoon',1],['bk',2]]);
+  r('Baskin Robbins','Large',[['bkcL',1],['spoon',1],['bk',3]]);
   r('Mini Shakes','',[['shk',1],['lid',1],['straw',1],['milk',0.2],['mm',80]]);
   r('Milk Shakes','',[['shk',1],['lid',1],['straw',1],['milk',0.25],['bk',2]]);
-  r('Fresh & Signature Juices','Cup',[['juice',1],['lid',1],['straw',1]]);
-  r('Mojitos','',[['juice',1],['lid',1],['straw',1]]);
+  r('Fresh & Signature Juices','Cup',[['jcR',1],['lid',1],['straw',1]]);
+  ['Acai Smoothies','Smoothies','Iced Matcha Latte'].forEach(function(c){
+    r(c,'Regular',[['jcR',1],['lid',1],['straw',1]]); r(c,'Large',[['jcL',1],['lid',1],['straw',1]]);
+  });
+  r('Mojitos','',[['jcR',1],['lid',1],['straw',1]]);
+  r('Iced Teas','',[['jcR',1],['lid',1],['straw',1]]);
+  r('Acai Bowl','',[['acaiBowl',1],['spoon',1]]);
+  r('Pancake Box','',[['pcBox',1]]);
+  r('Pancake Bites','',[['pcPlate',1]]);
+  r('Nachos','',[['nPlate',1]]);
+  r('Mr. Corn','Medium',[['cornM',1],['spoon',1]]);
+  r('Mr. Corn','Large',[['cornL',1],['spoon',1]]);
   var base = {};
   M.forEach(function(x){ base[x[0]] = {t:now, q:x[6]}; });
-  return {materials:M.map(function(x){ return {id:x[0], name:x[1], unit:x[2], cost:x[3], cup:x[4], min:x[5]}; }), recipes:R, base:base, purchases:[], waste:[], counts:[]};
+  return {v:2, materials:M.map(function(x){ return {id:x[0], name:x[1], unit:x[2], cost:x[3], cup:x[4], min:x[5]}; }), recipes:R, base:base, purchases:[], waste:[], counts:[]};
 }
-if (!db.inv) db.inv = invDefault();
+if (!db.inv || db.inv.v !== 2) db.inv = invDefault();
 function num(n){ return Math.round(n * 100) / 100; }
 function rkey(cat, size){ return cat + '|' + (size || ''); }
 function mat(id){ return byId(db.inv.materials, id); }
@@ -316,7 +329,7 @@ function invOver(){
   var rows = db.inv.materials.map(function(m){
     var e = E[m.id], b = db.inv.base[m.id] || {t:0};
     var st = e.exp <= 0 ? '<span class="pill void">Out</span>' : (e.exp <= m.min ? '<span class="pill void">Low</span>' : '<span class="pill cash">OK</span>');
-    return '<tr><td>'+esc(m.name)+(m.cup?' <span class="pill card">cup</span>':'')+'</td><td class="n"><b>'+num(e.exp)+'</b> '+esc(m.unit)+'</td><td>'+st+'</td><td class="n">'+num(e.used)+'</td><td>'+(b.t?fdate(b.t):'-')+'</td></tr>';
+    return '<tr><td>'+esc(m.name)+(m.cup?' <span class="pill card">cup / plate</span>':'')+'</td><td class="n"><b>'+num(e.exp)+'</b> '+esc(m.unit)+'</td><td>'+st+'</td><td class="n">'+num(e.used)+'</td><td>'+(b.t?fdate(b.t):'-')+'</td></tr>';
   }).join('');
   return '<p style="color:var(--muted);margin:0 0 10px">What should be on the shelf now = last count + purchases − waste − what the sales used. Compare it with a real count to find missing stock.</p>'
     + '<div class="tbl"><table><thead><tr><th>Material</th><th class="n">Should be on hand</th><th>Status</th><th class="n">Used by sales since count</th><th>Last count</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
@@ -359,7 +372,7 @@ function invVar(){
     var cupUnits = missCups.reduce(function(a,l){ return a - l.diff; }, 0), est = missCups.reduce(function(a,l){ return a - l.diff * l.avg; }, 0);
     var loss = c.lines.filter(function(l){ return l.diff < 0; }).reduce(function(a,l){ return a - l.diff * l.cost; }, 0);
     return '<div class="tbl"><h3>Count of '+fdate(c.t)+'</h3>'
-      + (cupUnits ? '<div style="padding:12px 16px;background:var(--warn-bg);color:var(--warn);font-weight:600">'+num(cupUnits)+' cups are missing compared with what the sales used. That is about AED '+money(est)+' of sales that may not have been rung up.</div>' : '')
+      + (cupUnits ? '<div style="padding:12px 16px;background:var(--warn-bg);color:var(--warn);font-weight:600">'+num(cupUnits)+' cups or plates are missing compared with what the sales used. That is about AED '+money(est)+' of sales that may not have been rung up.</div>' : '')
       + '<table><thead><tr><th>Material</th><th class="n">Should be</th><th class="n">Counted</th><th class="n">Difference</th><th class="n">Cost of shortage</th></tr></thead><tbody>'+rows+'</tbody></table>'
       + '<div style="padding:10px 16px;font-weight:600">Shortage at cost: AED '+money(loss)+'</div></div>';
   }).join('');
@@ -384,10 +397,10 @@ function invMat(){
       + '<td><input class="inp" style="width:70px;text-align:left" data-f="munit" data-m="'+m.id+'" value="'+esc(m.unit)+'" aria-label="Unit"></td>'
       + '<td class="n"><input class="inp" type="number" min="0" step="any" data-f="mcost" data-m="'+m.id+'" value="'+m.cost+'" aria-label="Cost per unit"></td>'
       + '<td class="n"><input class="inp" type="number" min="0" step="any" data-f="mmin" data-m="'+m.id+'" value="'+m.min+'" aria-label="Low stock level"></td>'
-      + '<td><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-f="mcup" data-m="'+m.id+'"'+(m.cup?' checked':'')+'> cup</label></td>'
+      + '<td><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-f="mcup" data-m="'+m.id+'"'+(m.cup?' checked':'')+'> cup / plate</label></td>'
       + '<td class="n">'+(S.matDel===m.id?'<button class="btn primary sm" data-act="matdelyes" data-id="'+m.id+'">Delete</button> <button class="btn ghost sm" data-act="matdelno">Keep</button>':'<button class="btn ghost sm" data-act="matdel" data-id="'+m.id+'">Delete</button>')+'</td></tr>';
   }).join('');
-  return '<p style="color:var(--muted);margin:0 0 10px">Everything you buy and use up. Mark the cups so the Variance tab can turn missing cups into missing sales. Cost is per unit and updates when you add a purchase.</p>'
+  return '<p style="color:var(--muted);margin:0 0 10px">Everything you buy and use up. Mark the cups and plates so the Variance tab can turn missing ones into missing sales. Cost is per unit and updates when you add a purchase.</p>'
     + '<div class="tbl"><table><thead><tr><th>Name</th><th>Unit</th><th class="n">Cost / unit</th><th class="n">Low at</th><th></th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div><button class="btn primary sm" data-act="addmat">+ Add material</button>';
 }
 
