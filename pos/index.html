@@ -236,6 +236,8 @@ var SHOP = {name:'Hollywood Ice Creams', trn:'TRN: (add your tax number)', insta
 var K_MENU = 'hollywood_pos_menu_v1';
 var menu = (function(){ try { var r = JSON.parse(localStorage.getItem(K_MENU)); if (r && r.length) return r; } catch(e){} return defaultMenu(); })();
 menu.forEach(function(c){ if (c.name === 'Mini Melts Ice Cream' || c.name === 'Minimals Ice Cream') c.name = 'Minimelts Ice Cream'; });
+/* Test start: every menu item begins with 100 in stock (runs once per browser) */
+if (db.stockSeed !== 1){ db.stock = {}; menu.forEach(function(c){ c.items.forEach(function(it0){ db.stock[skey(c.name, it0.name)] = 100; }); }); db.stockSeed = 1; save(); }
 var saveT, dirty = false;
 function flushMenu(){ if (!dirty) return; dirty = false; try { localStorage.setItem(K_MENU, JSON.stringify(menu)); } catch(e){ toast('Could not save the menu. Storage is full or blocked.'); } }
 function saveMenu(){ dirty = true; clearTimeout(saveT); saveT = setTimeout(flushMenu, 300); }
