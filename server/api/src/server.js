@@ -2,12 +2,17 @@
 // Hollywood POS sync API. A thin layer over the SQL functions in db/schema.sql.
 // Only Node's built-in http module and the "pg" driver are used.
 const http = require('http');
+const fs = require('fs');
+const nodePath = require('path');
 const { Pool } = require('pg');
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 const ORIGINS = (process.env.ALLOWED_ORIGINS || '*').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
 const MAX_BODY = 2 * 1024 * 1024;
+// Optional: also serve the web apps (tablet order pad at /, POS at /pos/) from this folder, so a shop computer can do everything.
+const WEB_DIR = process.env.WEB_DIR ? nodePath.resolve(process.env.WEB_DIR) : '';
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
 
 function cors(req, res) {
@@ -55,6 +60,21 @@ function checkEvents(list) {
   });
 }
 
+
+function serveStatic(req, res, pathname) {
+  if (!WEB_DIR || (req.method !== 'GET' && req.method !== 'HEAD')) return false;
+  let rel = decodeURIComponent(pathname);
+  if (rel.endsWith('/')) rel += 'index.html';
+  else if (rel === '/pos') rel = '/pos/index.html';
+  const file = nodePath.normalize(nodePath.join(WEB_DIR, rel));
+  if (file !== WEB_DIR && !file.startsWith(WEB_DIR + nodePath.sep)) return false;   // never leave the web folder
+  let st; try { st = fs.statSync(file); } catch (e) { return false; }
+  if (!st.isFile()) return false;
+  res.writeHead(200, { 'Content-Type': MIME[nodePath.extname(file).toLowerCase()] || 'application/octet-stream', 'Content-Length': st.size, 'Cache-Control': 'no-cache' });
+  if (req.method === 'HEAD') res.end(); else fs.createReadStream(file).pipe(res);
+  return true;
+}
+
 async function route(req, res) {
   const url = new URL(req.url, 'http://x');
   const path = url.pathname.replace(/\/+$/, '') || '/';
@@ -96,6 +116,7 @@ async function route(req, res) {
     const out = await one('select config_put($1::uuid, $2, $3::jsonb, $4::int) as r', [dev, cm[1], JSON.stringify(b.value), parseInt(b.version || 0, 10) || 0]);
     return send(res, out.ok ? 200 : 409, out);
   }
+  if (serveStatic(req, res, url.pathname)) return;
   return send(res, 404, { error: 'not found' });
 }
 

@@ -18,12 +18,13 @@ What is **not** done yet: the tablet app and the POS do not call this server yet
 | --- | --- |
 | `db/schema.sql` | Tables and the SQL functions that do the work. Loaded automatically the first time the database starts. |
 | `api/src/server.js` | The HTTP API (Node.js, one dependency: `pg`). |
-| `docker-compose.yml` | Starts PostgreSQL, the API and Caddy (HTTPS) together. |
+| `docker-compose.yml` | Starts PostgreSQL, the API and Caddy (HTTPS) together, for a server on the internet. |
+| `docker-compose.local.yml` | Same, without HTTPS, for a computer in the shop. Also serves the web apps. |
 | `Caddyfile` | Gets and renews the HTTPS certificate. |
 | `.env.example` | The settings you fill in. |
 | `scripts/backup.sh` | Daily backup. |
 
-## Set it up on a server
+## Set it up on a server on the internet
 
 1. Rent a small Linux server (Ubuntu 24.04, 2 CPU, 4 GB RAM, 50 GB disk is plenty). Pick a data centre near you.
 2. Point a domain name at it (an `A` record, for example `pos.yourshop.com`).
@@ -51,6 +52,41 @@ What is **not** done yet: the tablet app and the POS do not call this server yet
 8. Back up every day: add `30 3 * * * cd /opt/hpos/server && ./scripts/backup.sh` to `crontab -e`, and copy the `backups` folder somewhere else now and then.
 
 To stop a lost tablet from syncing: `docker compose exec db psql -U hpos hpos -c "update devices set active=false where name='Tablet 1'"`.
+
+## Run it on a computer in the shop first (no server to buy yet)
+
+The same code runs on any Windows, Mac or Linux computer that stays switched on in the shop. The tablets and the counter reach it over the shop Wi-Fi. It also serves the two web apps, so there is no internet address and no HTTPS to set up.
+
+1. Install Docker Desktop (https://www.docker.com/products/docker-desktop/). Turn on "Start Docker Desktop when you sign in".
+2. Download this repository (green **Code** button, then **Download ZIP**, or `git clone https://github.com/roshrpa/HPOS.git`) and open a terminal in its `server` folder.
+3. Create the settings file and fill in two lines (`POSTGRES_PASSWORD` and `ADMIN_TOKEN`; leave the rest):
+
+   ```sh
+   cp .env.example .env
+   ```
+
+4. Start it:
+
+   ```sh
+   docker compose -f docker-compose.local.yml up -d
+   ```
+
+5. Find the computer's address on the shop network (for example `192.168.1.20`). In the router, give this computer a fixed address ("DHCP reservation"), otherwise it can change and the tablets will not find it.
+6. On a tablet open `http://192.168.1.20:3000/` (order pad) and, on the counter, `http://192.168.1.20:3000/pos/`.
+7. Register each device as in step 7 above, but with `http://192.168.1.20:3000` in place of the internet address.
+
+Things to remember:
+
+- The computer must be on and awake whenever the shop is open. Turn off sleep in its power settings.
+- Back up every day (`scripts/backup.sh` on Mac/Linux). On Windows run `docker compose -f docker-compose.local.yml exec -T db pg_dump -U hpos hpos > backup.sql` and copy the file to a USB drive or cloud folder.
+- Use the address with `http://`, not `https://`. Browsers only let a page call the API with the same kind of address, which is why the API also serves the pages.
+- The tablet APK will need one small change (allow `http`) when it starts syncing. That goes in with the sync work.
+
+### Moving to a bought server later
+
+1. On the shop computer: `docker compose -f docker-compose.local.yml exec -T db pg_dump -U hpos hpos > hpos.sql`
+2. Set the server up with the steps above, then load the file: `docker compose exec -T db psql -U hpos hpos < hpos.sql` (stop the `api` container while you do it).
+3. Change the server address on each device. The device tokens move with the database, so devices do not need to be registered again.
 
 ## API
 
