@@ -256,37 +256,37 @@ function invDefault(){
     ['jcR','Juice cup regular','pcs',0.50,true,100,400],['jcL','Juice cup large','pcs',0.65,true,100,300],
     ['cornM','Mr. Corn cup regular','pcs',0.40,true,50,200],['cornL','Mr. Corn cup large','pcs',0.50,true,50,200],['coffee','Coffee cup (hot drinks)','pcs',0.40,true,100,500],
     ['pcPlate','Pancake plate','pcs',0.60,true,50,200],['pcBox','Pancake box','pcs',1.50,true,20,100],['nPlate','Nachos plate','pcs',0.70,true,50,200],['acaiBowl','Acai bowl','pcs',0.80,true,30,150],
-    ['mmLid','Mini Melts lid (all sizes)','pcs',0.10,false,100,800],['bkLidS','Baskin lid S','pcs',0.10,false,100,500],['bkLidM','Baskin lid M','pcs',0.10,false,100,400],['bkLidL','Baskin lid L','pcs',0.12,false,100,300],['lidR','Juice lid regular','pcs',0.15,false,100,600],['lidL','Juice lid large','pcs',0.18,false,100,500],['hotLid','Hot cup lid','pcs',0.15,false,100,500],['bowlLid','Acai bowl lid','pcs',0.30,false,30,150],['straw','Straw','pcs',0.05,false,100,1000],['spoon','Spoon','pcs',0.05,false,200,1500],
-    ['mm','Mini Melts beads','g',0.03,false,3000,20000],['bk','Baskin ice cream','scoop',1.8,false,20,120],['milk','Milk','L',5,false,10,40]
+    ['mmLid','Mini Melts lid (all sizes)','pcs',0.10,false,100,800],['bkLidS','Baskin lid S','pcs',0.10,false,100,500],['bkLidM','Baskin lid M','pcs',0.10,false,100,400],['bkLidL','Baskin lid L','pcs',0.12,false,100,300],
+    ['lidR','Juice lid regular','pcs',0.15,false,100,600],['lidL','Juice lid large','pcs',0.18,false,100,500],['hotLid','Hot cup lid','pcs',0.15,false,100,500],['bowlLid','Acai bowl lid','pcs',0.30,false,30,150]
   ];
   var R = {};
   function r(c, s, list){ R[c + '|' + s] = list.map(function(x){ return {m:x[0], q:x[1]}; }); }
-  r('Mini Melts Ice Cream','Small',[['mmcS',1],['mmLid',1],['spoon',1],['mm',100]]);
-  r('Mini Melts Ice Cream','Medium',[['mmcM',1],['mmLid',1],['spoon',1],['mm',150]]);
-  r('Mini Melts Ice Cream','Large',[['mmcL',1],['mmLid',1],['spoon',1],['mm',200]]);
-  r('Baskin Robbins','Small',[['bkcS',1],['bkLidS',1],['spoon',1],['bk',1]]);
-  r('Baskin Robbins','Medium',[['bkcM',1],['bkLidM',1],['spoon',1],['bk',2]]);
-  r('Baskin Robbins','Large',[['bkcL',1],['bkLidL',1],['spoon',1],['bk',3]]);
-  r('Mini Shakes','',[['jcL',1],['lidL',1],['straw',1],['milk',0.2],['mm',80]]);
-  r('Milk Shakes','',[['jcL',1],['lidL',1],['straw',1],['milk',0.25],['bk',2]]);
-  r('Fresh & Signature Juices','Cup',[['jcR',1],['lidR',1],['straw',1]]);
+  r('Mini Melts Ice Cream','Small',[['mmcS',1],['mmLid',1]]);
+  r('Mini Melts Ice Cream','Medium',[['mmcM',1],['mmLid',1]]);
+  r('Mini Melts Ice Cream','Large',[['mmcL',1],['mmLid',1]]);
+  r('Baskin Robbins','Small',[['bkcS',1],['bkLidS',1]]);
+  r('Baskin Robbins','Medium',[['bkcM',1],['bkLidM',1]]);
+  r('Baskin Robbins','Large',[['bkcL',1],['bkLidL',1]]);
+  r('Mini Shakes','',[['jcL',1],['lidL',1]]);
+  r('Milk Shakes','',[['jcL',1],['lidL',1]]);
+  r('Fresh & Signature Juices','Cup',[['jcR',1],['lidR',1]]);
   ['Acai Smoothies','Smoothies','Iced Matcha Latte'].forEach(function(c){
-    r(c,'Regular',[['jcR',1],['lidR',1],['straw',1]]); r(c,'Large',[['jcL',1],['lidL',1],['straw',1]]);
+    r(c,'Regular',[['jcR',1],['lidR',1]]); r(c,'Large',[['jcL',1],['lidL',1]]);
   });
-  r('Mojitos','',[['jcR',1],['lidR',1],['straw',1]]);
-  r('Iced Teas','',[['jcR',1],['lidR',1],['straw',1]]);
-  r('Acai Bowl','',[['acaiBowl',1],['bowlLid',1],['spoon',1]]);
+  r('Mojitos','',[['jcR',1],['lidR',1]]);
+  r('Iced Teas','',[['jcR',1],['lidR',1]]);
+  r('Acai Bowl','',[['acaiBowl',1],['bowlLid',1]]);
   r('Hot Drinks','',[['coffee',1],['hotLid',1]]);
   r('Pancake Box','',[['pcBox',1]]);
   r('Pancake Bites','',[['pcPlate',1]]);
   r('Nachos','',[['nPlate',1]]);
-  r('Mr. Corn','Medium',[['cornM',1],['spoon',1]]);
-  r('Mr. Corn','Large',[['cornL',1],['spoon',1]]);
+  r('Mr. Corn','Medium',[['cornM',1]]);
+  r('Mr. Corn','Large',[['cornL',1]]);
   var base = {};
   M.forEach(function(x){ base[x[0]] = {t:now, q:x[6]}; });
-  return {v:5, materials:M.map(function(x){ return {id:x[0], name:x[1], unit:x[2], cost:x[3], cup:x[4], min:x[5]}; }), recipes:R, base:base, purchases:[], waste:[], counts:[]};
+  return {v:6, materials:M.map(function(x){ return {id:x[0], name:x[1], unit:x[2], cost:x[3], cup:x[4], min:x[5]}; }), recipes:R, base:base, purchases:[], waste:[], counts:[]};
 }
-if (!db.inv || db.inv.v !== 5) db.inv = invDefault();
+if (!db.inv || db.inv.v !== 6) db.inv = invDefault();
 function num(n){ return Math.round(n * 100) / 100; }
 function rkey(cat, size){ return cat + '|' + (size || ''); }
 function mat(id){ return byId(db.inv.materials, id); }
