@@ -26,7 +26,9 @@ nav.tabs{display:flex;gap:6px}
 nav.tabs button{padding:10px 20px;border-radius:99px;font-weight:600;color:var(--muted);min-height:46px}
 nav.tabs button[aria-current="true"]{background:var(--pink);color:#fff}
 main{flex:1;min-height:0;display:flex}
-.sale{flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) 380px}
+.sale{flex:1;min-width:0;display:grid;grid-template-columns:210px minmax(0,1fr) 380px}
+.rail{position:relative;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:6px}
+.rail .cat{white-space:normal;text-align:left;line-height:1.2;width:100%;border-radius:26px}
 .menu{display:flex;flex-direction:column;min-height:0;min-width:0}
 .cats{display:flex;gap:8px;padding:12px 14px 6px;overflow-x:auto;flex-shrink:0}
 .cat{flex:none;display:flex;align-items:center;gap:8px;padding:5px 14px 5px 5px;border-radius:99px;background:rgba(255,255,255,.75);font-weight:600;font-size:14px;min-height:46px;white-space:nowrap}
@@ -144,7 +146,7 @@ td .inp{width:90px;text-align:right}
 .ed .cat{min-height:46px}
 .ed .list .btn{margin-top:4px}
 @media (max-width:900px){.ed{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.ed .list{flex-direction:row;overflow-x:auto;overflow-y:hidden}}
-@media (max-width:900px){.sale{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) 46%}.panel{border-left:0;border-top:1px solid var(--line)}}
+@media (max-width:900px){.sale{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) 42%}.rail{flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:8px 10px}.rail .cat{width:auto;white-space:nowrap;flex:none}.panel{border-left:0;border-top:1px solid var(--line)}}
 @media print{body{overflow:visible}#app,#toast{display:none}.scrim{position:static;background:none;padding:0}.sheet{box-shadow:none;width:100%}.btns,.sheet h3,.sheet p{display:none}}
 </style>
 </head>
@@ -531,7 +533,7 @@ function vSale(){
       + '<div class="amt">'+money(l.qty*l.price)+'</div><button class="rm" data-act="rm" data-i="'+i+'" aria-label="Remove">×</button></div>';
   }).join('') : '<div class="empty">Bill is empty.<br>Tap an item to add it.</div>';
   var has = S.cart.length > 0;
-  return '<div class="sale"><section class="menu"><div class="cats">'+cats+'</div><div class="items">'+items+'</div></section>'
+  return '<div class="sale"><nav class="rail" aria-label="Categories">'+cats+'</nav><section class="menu"><div class="items">'+items+'</div></section>'
     + '<aside class="panel"><h2>Bill #'+nextNo()+'<small>'+S.cart.reduce(function(a,l){return a+l.qty;},0)+' items</small></h2><div class="lines">'+lines+'</div>'
     + '<div class="foot">'+(setg().vat ? '<div class="sum"><span>Subtotal (excl. VAT)</span><span>'+money(total-vat)+'</span></div><div class="sum"><span>VAT '+num(setg().rate)+'%</span><span>'+money(vat)+'</span></div>' : '')
     + '<div class="tot"><span>Total</span><span>AED '+money(total)+'</span></div>'
@@ -627,7 +629,7 @@ function vSheets(){
   return '';
 }
 
-var SCR = ['.items', '.cats', '.lines', '.page', '.ed .main', '.ed .list'], lastKey = '';
+var SCR = ['.items', '.cats', '.rail', '.lines', '.page', '.ed .main', '.ed .list'], lastKey = '';
 function render(){
   var keep = {}; SCR.forEach(function(s){ var e = document.querySelector(s); if (e) keep[s] = [e.scrollTop, e.scrollLeft]; });
   var key = S.tab;
