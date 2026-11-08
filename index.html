@@ -241,6 +241,19 @@ main{flex:1;min-height:0;display:flex}
 .items.in-l{animation:inL .24s cubic-bezier(.2,.8,.2,1)}
 .items.in-r{animation:inR .24s cubic-bezier(.2,.8,.2,1)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+body[data-img="hide"] .item .pic{display:none}
+body[data-img="hide"] .item .body{padding-top:12px;padding-right:56px}
+body[data-img="small"] .item .pic{aspect-ratio:auto;height:60px;font-size:26px}
+body[data-img="medium"] .item .pic{aspect-ratio:auto;height:96px}
+body[data-cols="2"] .items{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+body[data-cols="3"] .items{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+body[data-cols="4"] .items{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+body[data-cols="5"] .items{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg button{min-height:46px;padding:0 18px;border-radius:12px;background:#fff;border:2px solid var(--line);font-weight:600;font-size:15px}
+.seg button[aria-pressed="true"]{background:var(--pink);border-color:var(--pink);color:#fff}
+.hint{color:var(--muted);font-size:13px;margin:0 0 10px}
 </style>
 </head>
 <body>
@@ -327,10 +340,12 @@ function defaultMenu(){
 }
 
 /* ---------- Storage (this tablet only) ---------- */
-var K_ORD='hollywood_orders_v2', K_MENU='hollywood_menu_v2', K_PIN='hollywood_pin';
+var K_ORD='hollywood_orders_v2', K_MENU='hollywood_menu_v2', K_PIN='hollywood_pin', K_UI='hollywood_ui_v1';
 var mem = {};
 function lsGet(k){ try { var r = localStorage.getItem(k); if (r !== null) return r; } catch(e){} return mem[k] || null; }
 function lsSet(k, v){ mem[k] = v; try { localStorage.setItem(k, v); return true; } catch(e){ return false; } }
+var ui = (function(){ var d = {img:'small', cols:0}; try { var o = JSON.parse(lsGet(K_UI) || '{}'); if (o.img) d.img = o.img; if (o.cols != null) d.cols = +o.cols; } catch(e){} return d; })();
+function saveUi(){ lsSet(K_UI, JSON.stringify(ui)); }
 function lsDel(k){ delete mem[k]; try { localStorage.removeItem(k); } catch(e){} }
 function today(){ return new Date().toLocaleDateString('en-CA'); }
 var db, menu, pin;
@@ -393,6 +408,7 @@ function vHeader(){
     + tab('orders','Orders', n ? '<span class="badge">'+n+'</span>' : '')
     + tab('totals','To enter')
     + tab('menu','Menu')
+    + tab('settings','Settings')
     + '</nav></header>';
 }
 
@@ -400,6 +416,15 @@ function railBtn(c, pressed, act){
   var s = src(c.img) || (c.items[0] && src(c.items[0].img));
   return '<button class="cat" data-act="'+act+'" data-id="'+c.id+'" aria-pressed="'+pressed+'">'
     + (s ? '<img src="'+esc(s)+'" alt="">' : '<span class="ph"></span>') + '<span>'+esc(c.name)+'</span>' + (act === 'cat' && cartCount(c.name) ? '<span class="cn">'+cartCount(c.name)+'</span>' : '') + '</button>';
+}
+
+function vSettings(){
+  function seg(act, cur, opts){ return '<div class="seg">'+opts.map(function(o){ return '<button data-act="'+act+'" data-v="'+o[0]+'" aria-pressed="'+(String(cur)===String(o[0]))+'">'+o[1]+'</button>'; }).join('')+'</div>'; }
+  return '<div class="page"><div class="card"><h3>Item pictures</h3><p class="hint">Size of the picture on each item in the New order screen.</p>'
+    + seg('setimg', ui.img, [['hide','No pictures'],['small','Small'],['medium','Medium'],['large','Large']]) + '</div>'
+    + '<div class="card"><h3>Items per row</h3><p class="hint">How many items show side by side. Auto fits the screen.</p>'
+    + seg('setcols', ui.cols || 0, [[0,'Auto'],[2,'2'],[3,'3'],[4,'4'],[5,'5']]) + '</div>'
+    + '<p class="hint" style="padding:0 6px">These settings are saved on this tablet only.</p></div>';
 }
 
 function vNew(){
@@ -576,8 +601,9 @@ var lastSig = '', lastTab = '', KEEPALWAYS = ['.rail', '.ed .list', 'nav.tabs'];
 var SCROLLERS = ['nav.tabs', '.items', '.rail', '.lines', '.page', '.ed .main', '.ed .list', '.sheet'];
 function render(){
   var app = document.getElementById('app'), keep = {};
+  document.body.dataset.img = ui.img; document.body.dataset.cols = ui.cols || 'auto';
   SCROLLERS.forEach(function(s){ var e = document.querySelector(s); if (e) keep[s] = [lastSig, e.scrollTop, e.scrollLeft, lastTab]; });
-  var body = S.tab==='new' ? vNew() : S.tab==='orders' ? vOrders() : S.tab==='totals' ? vTotals() : vMenu();
+  var body = S.tab==='new' ? vNew() : S.tab==='orders' ? vOrders() : S.tab==='totals' ? vTotals() : S.tab==='settings' ? vSettings() : vMenu();
   var sig = S.tab + (S.cat || '') + (S.edCat || '');
   lastSig = sig; lastTab = S.tab;
   var wantReveal = S.reveal; S.reveal = false;
@@ -667,6 +693,8 @@ document.addEventListener('click', function(e){
   if (el.classList.contains('scrim') && e.target !== el) return;
   var a = el.dataset.act, d = el.dataset, c;
   switch (a){
+    case 'setimg': ui.img = d.v; saveUi(); break;
+    case 'setcols': ui.cols = +d.v; saveUi(); break;
     case 'tab': S.cancelAsk = null; S.tab = d.v; S.clearAsk = false; S.del = null; S.resetAsk = false; if (d.v !== 'menu') S.pinErr = false; break;
     case 'cat':
       var oi = menu.map(function(m){ return m.id; }).indexOf(curCat().id), ni = menu.map(function(m){ return m.id; }).indexOf(d.id);
