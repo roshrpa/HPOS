@@ -1,14 +1,6 @@
 name: Build APK
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'index.html'
-      - 'capacitor.config.json'
-      - 'package.json'
-      - 'signing/**'
-      - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
 permissions:

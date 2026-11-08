@@ -254,6 +254,19 @@ body[data-cols="5"] .items{grid-template-columns:repeat(5,minmax(0,1fr))!importa
 .seg button{min-height:46px;padding:0 18px;border-radius:12px;background:#fff;border:2px solid var(--line);font-weight:600;font-size:15px}
 .seg button[aria-pressed="true"]{background:var(--pink);border-color:var(--pink);color:#fff}
 .hint{color:var(--muted);font-size:13px;margin:0 0 10px}
+
+.slipwrap{background:#fff;color:#000;width:300px;max-width:100%;margin:0 auto;padding:14px 12px;font-family:'Courier New',monospace;font-size:14px;line-height:1.35;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.slipwrap .c{text-align:center}.slipwrap .big{font-size:20px;font-weight:700}.slipwrap .hr{border-top:1px dashed #000;margin:8px 0}
+.slipwrap .r{display:flex;gap:6px}.slipwrap .r .q{width:30px;flex:none;font-weight:700}.slipwrap .r .n{flex:1;min-width:0}.slipwrap .r .a{flex:none}
+.slipwrap .cat{font-weight:700;margin-top:6px;text-transform:uppercase;font-size:12px;display:block;background:none;min-height:0;padding:0;border-radius:0}
+.slipwrap .tt{display:flex;justify-content:space-between;font-weight:700;font-size:17px}
+@media print{
+  body *{visibility:hidden}
+  #slip,#slip *{visibility:visible}
+  #slip{position:absolute;left:0;top:0;width:72mm}
+  .slipwrap{box-shadow:none;width:72mm;padding:0;font-size:12pt}
+  @page{size:80mm auto;margin:3mm}
+}
 </style>
 </head>
 <body>
@@ -344,7 +357,7 @@ var K_ORD='hollywood_orders_v2', K_MENU='hollywood_menu_v2', K_PIN='hollywood_pi
 var mem = {};
 function lsGet(k){ try { var r = localStorage.getItem(k); if (r !== null) return r; } catch(e){} return mem[k] || null; }
 function lsSet(k, v){ mem[k] = v; try { localStorage.setItem(k, v); return true; } catch(e){ return false; } }
-var ui = (function(){ var d = {img:'small', cols:0}; try { var o = JSON.parse(lsGet(K_UI) || '{}'); if (o.img) d.img = o.img; if (o.cols != null) d.cols = +o.cols; } catch(e){} return d; })();
+var ui = (function(){ var d = {img:'small', cols:0}; try { var o = JSON.parse(lsGet(K_UI) || '{}'); if (o.img) d.img = o.img; if (o.cols != null) d.cols = +o.cols; d.autoslip = !!o.autoslip; } catch(e){} return d; })();
 function saveUi(){ lsSet(K_UI, JSON.stringify(ui)); }
 function lsDel(k){ delete mem[k]; try { localStorage.removeItem(k); } catch(e){} }
 function today(){ return new Date().toLocaleDateString('en-CA'); }
@@ -424,6 +437,8 @@ function vSettings(){
     + seg('setimg', ui.img, [['hide','No pictures'],['small','Small'],['medium','Medium'],['large','Large']]) + '</div>'
     + '<div class="card"><h3>Items per row</h3><p class="hint">How many items show side by side. Auto fits the screen.</p>'
     + seg('setcols', ui.cols || 0, [[0,'Auto'],[2,'2'],[3,'3'],[4,'4'],[5,'5']]) + '</div>'
+    + '<div class="card"><h3>Print slip</h3><p class="hint">Open the print slip automatically after you confirm an order.</p>'
+    + seg('setauto', ui.autoslip ? 1 : 0, [[0,'Off'],[1,'On']]).replace(/data-v="1"/,'data-v="1"').replace(/data-act="setauto" data-v="(\d)"/g,'data-act="setauto" data-v="$1"') + '</div>'
     + '<p class="hint" style="padding:0 6px">These settings are saved on this tablet only.</p></div>';
 }
 
@@ -473,8 +488,8 @@ function vOrders(){
       + '<ul>'+li+'</ul>' + (o.note ? '<div class="note">'+esc(o.note)+'</div>' : '')
       + '<div class="sum"><span>Total</span><span>AED '+money(totalAmt(o.lines))+'</span></div>'
       + '<div class="act">' + (o.done
-        ? '<button class="btn ghost sm" data-act="undo" data-no="'+o.id+'">Mark pending</button>'
-        : '<button class="btn ghost sm" data-act="editord" data-no="'+o.id+'">Edit</button>'
+        ? '<button class="btn ghost sm" data-act="slip" data-no="'+o.id+'">Print slip</button><button class="btn ghost sm" data-act="undo" data-no="'+o.id+'">Mark pending</button>'
+        : '<button class="btn ghost sm" data-act="slip" data-no="'+o.id+'">Print slip</button><button class="btn ghost sm" data-act="editord" data-no="'+o.id+'">Edit</button>'
           + (S.cancelAsk === String(o.id) ? '<button class="btn primary sm" data-act="cancelyes" data-no="'+o.id+'">Delete order</button><button class="btn ghost sm" data-act="cancelno">Keep</button>'
                                   : '<button class="btn danger sm" data-act="cancelask" data-no="'+o.id+'">Cancel order</button>')
           + '<button class="btn good sm" data-act="done" data-no="'+o.id+'">Mark done</button>') + '</div></article>';
@@ -579,7 +594,25 @@ function vMenu(){
     + '</div></div>';
 }
 
+function slipHtml(o){
+  var d = new Date(o.t), cats = {}, order = [];
+  o.lines.forEach(function(l){ if (!cats[l.cat]){ cats[l.cat] = []; order.push(l.cat); } cats[l.cat].push(l); });
+  var rows = order.map(function(c){
+    return '<span class="cat">'+esc(c)+'</span>' + cats[c].map(function(l){
+      return '<div class="r"><span class="q">'+l.qty+'x</span><span class="n">'+esc(l.name)+(l.size?' ('+esc(l.size)+')':'')+'</span><span class="a">'+money(l.qty*l.price)+'</span></div>';
+    }).join('');
+  }).join('');
+  return '<div class="slipwrap" id="slip"><div class="c big">HOLLYWOOD</div><div class="c">Ice Creams</div><div class="hr"></div>'
+    + '<div class="c big">ORDER #'+esc(orderLabel(o))+'</div>'
+    + '<div class="c">'+d.toLocaleDateString([], {day:'numeric', month:'short', year:'numeric'})+'  '+d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})+'</div>'
+    + (o.note ? '<div class="c" style="margin-top:4px;font-weight:700">'+esc(o.note)+'</div>' : '')
+    + '<div class="hr"></div>' + rows + '<div class="hr"></div>'
+    + '<div class="tt"><span>TOTAL</span><span>AED '+money(totalAmt(o.lines))+'</span></div>'
+    + '<div class="hr"></div><div class="c">Thank you!</div></div>';
+}
+
 function vSheets(){
+  if (S.slip){ var so = byId(db.orders, S.slip); if (so) return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Order slip"><h3>Print slip</h3>'+slipHtml(so)+'<div class="btns" style="margin-top:12px"><button class="btn ghost" data-act="slipclose">Close</button><button class="btn primary" data-act="slipprint">Print</button></div></div></div>'; S.slip = null; }
   if (S.sheet){
     var c = byId(menu, S.sheet.cat), item = c && byId(c.items, S.sheet.item);
     if (c && item) return '<div class="scrim" data-act="closesheet"><div class="sheet" role="dialog" aria-label="Choose size"><h3>'+esc(item.name)+'</h3><p>'+esc(c.name)+' · choose size</p>'
@@ -735,6 +768,10 @@ document.addEventListener('click', function(e){
     case 'inc': S.cart[+d.i].qty++; break;
     case 'dec': S.cart[+d.i].qty--; if (S.cart[+d.i].qty <= 0) S.cart.splice(+d.i, 1); break;
     case 'clear': S.editing = null; S.cart = []; S.note = ''; S.cartOpen = false; break;
+    case 'slip': S.slip = d.no; break;
+    case 'slipclose': S.slip = null; break;
+    case 'slipprint': window.print(); return;
+    case 'setauto': ui.autoslip = d.v === '1'; saveUi(); break;
     case 'review': if (S.cart.length) S.review = true; S.cartOpen = false; break;
     case 'back': S.review = false; break;
     case 'place':
@@ -748,7 +785,7 @@ document.addEventListener('click', function(e){
       db.counter++;
       var no0 = {id:uuid(), no:db.counter, dev:sync.dev || '', t:Date.now(), lines:S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }), note:S.note.trim(), done:false};
       db.orders.push(no0); saveOrders(); queueEvent('order', {id:no0.id, no:no0.no, dev:no0.dev, day:today(), t:no0.t, lines:no0.lines, note:no0.note});
-      toast('Order #' + orderLabel(no0) + ' saved');
+      toast('Order #' + orderLabel(no0) + ' saved'); if (ui.autoslip) S.slip = no0.id;
       S.cart = []; S.note = ''; S.review = false; S.cat = menu[0].id;
       break;
     case 'filter': S.filter = d.id; S.clearAsk = false; break;
