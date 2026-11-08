@@ -269,6 +269,27 @@ body[data-cols="5"] .items{grid-template-columns:repeat(5,minmax(0,1fr))!importa
   .slipwrap{box-shadow:none;width:72mm;padding:0;font-size:12pt}
   @page{size:80mm auto;margin:3mm}
 }
+
+nav.tabs button.navbtn{font-size:20px;flex:none;gap:6px}
+nav.tabs button.navbtn span{font-size:14px}
+.drawerscrim{position:fixed;inset:0;background:rgba(28,26,31,.55);z-index:12;display:flex;justify-content:flex-end}
+.drawer{width:290px;max-width:85%;height:100%;background:#fff;padding:14px;display:flex;flex-direction:column;gap:6px;box-shadow:-8px 0 30px rgba(0,0,0,.3);overflow-y:auto}
+.drawer h3{margin:4px 6px 8px;font-size:18px}
+.drawer .ditem{display:flex;align-items:center;gap:12px;min-height:56px;padding:0 14px;border-radius:14px;font-weight:600;font-size:16px;text-align:left;background:#f6eef1}
+.drawer .ditem[aria-current="true"]{background:var(--pink);color:#fff}
+.drawer .ditem i{font-style:normal;font-size:22px;width:28px;text-align:center}
+.drawer .dsoon{margin:10px 6px 0;color:var(--muted);font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:#fff;border-radius:16px;padding:14px;box-shadow:0 1px 3px rgba(28,26,31,.1)}
+.kpi small{display:block;color:var(--muted);font-size:13px;font-weight:600}
+.kpi b{font-size:26px}
+.rtab{width:100%;border-collapse:collapse;font-size:15px}
+.rtab td,.rtab th{padding:8px 6px;border-top:1px solid var(--line);text-align:right}
+.rtab td:first-child,.rtab th:first-child{text-align:left}
+.rtab th{color:var(--muted);font-size:12px;text-transform:uppercase;border-top:0}
+.hbar{display:flex;align-items:flex-end;gap:3px;height:90px;margin-top:6px}
+.hbar div{flex:1;background:var(--pink);border-radius:4px 4px 0 0;min-height:2px;position:relative}
+.hlab{display:flex;gap:3px;font-size:10px;color:var(--muted)}.hlab span{flex:1;text-align:center}
 </style>
 </head>
 <body>
@@ -425,8 +446,7 @@ function vHeader(){
     + tab('new','New order', S.cart.length ? '<span class="badge">'+totalQty(S.cart)+'</span>' : '')
     + tab('orders','Orders', n ? '<span class="badge">'+n+'</span>' : '')
     + tab('totals','To enter', ne ? '<span class="badge">'+ne+'</span>' : '')
-    + tab('menu','Menu')
-    + tab('settings','Settings')
+    + '<button class="navbtn" data-act="opennav" aria-label="More" aria-current="'+(['reports','menu','settings'].indexOf(S.tab) >= 0)+'">\u2630' + (['reports','menu','settings'].indexOf(S.tab) >= 0 ? '<span>'+({reports:'Reports',menu:'Menu',settings:'Settings'})[S.tab]+'</span>' : '') + '</button>'
     + '</nav></header>';
 }
 
@@ -434,6 +454,78 @@ function railBtn(c, pressed, act){
   var s = src(c.img) || (c.items[0] && src(c.items[0].img));
   return '<button class="cat" data-act="'+act+'" data-id="'+c.id+'" aria-pressed="'+pressed+'">'
     + (s ? '<img src="'+esc(s)+'" alt="">' : '<span class="ph"></span>') + '<span>'+esc(c.name)+'</span>' + (act === 'cat' && cartCount(c.name) ? '<span class="cn">'+cartCount(c.name)+'</span>' : '') + '</button>';
+}
+
+function vDrawer(){
+  function it(id, ico, label){ return '<button class="ditem" data-act="gopage" data-v="'+id+'" aria-current="'+(S.tab===id)+'"><i>'+ico+'</i>'+label+'</button>'; }
+  return '<div class="drawerscrim" data-act="closenav"><div class="drawer" role="dialog" aria-label="Navigation"><h3>More</h3>'
+    + it('reports','\ud83d\udcca','Reports') + it('menu','\ud83c\udf66','Edit menu') + it('settings','\u2699\ufe0f','Settings')
+    + '<p class="dsoon">More pages will appear here as we add them.</p></div></div>';
+}
+
+function ymd(t){ return new Date(t).toLocaleDateString('en-CA'); }
+function repDay(){ return S.repDay || today(); }
+function shiftDay(d, k){ var x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + k); return x.toLocaleDateString('en-CA'); }
+function reportData(day, span){
+  var from = shiftDay(day, -((span || 1) - 1));
+  var os = db.orders.filter(function(o){ var y = ymd(o.t); return y >= from && y <= day; });
+  var cats = {}, items = {}, hours = [], mat = {}, i;
+  for (i = 0; i < 24; i++) hours.push(0);
+  var qty = 0, amt = 0;
+  os.forEach(function(o){
+    hours[new Date(o.t).getHours()]++;
+    o.lines.forEach(function(l){
+      var a = l.qty * l.price; qty += l.qty; amt += a;
+      cats[l.cat] = cats[l.cat] || {q:0, a:0}; cats[l.cat].q += l.qty; cats[l.cat].a += a;
+      var m = mat[l.cat] = mat[l.cat] || {sizes:[], items:{}, order:[]}, sz = l.size || '-';
+      if (m.sizes.indexOf(sz) < 0) m.sizes.push(sz);
+      if (!m.items[l.name]){ m.items[l.name] = {q:0, a:0, s:{}}; m.order.push(l.name); }
+      var mi = m.items[l.name]; mi.q += l.qty; mi.a += a; mi.s[sz] = (mi.s[sz] || 0) + l.qty;
+      var k = l.name + (l.size ? ' (' + l.size + ')' : '') + '|' + l.cat;
+      items[k] = items[k] || {n:l.name + (l.size ? ' (' + l.size + ')' : ''), c:l.cat, q:0, a:0}; items[k].q += l.qty; items[k].a += a;
+    });
+  });
+  return {mat:mat, os:os, qty:qty, amt:amt, cats:cats, items:Object.keys(items).map(function(k){ return items[k]; }).sort(function(a,b){ return b.q - a.q; }), hours:hours,
+    delivered:os.filter(function(o){ return o.delivered; }).length, entered:os.filter(function(o){ return o.entered; }).length};
+}
+function reportText(day){
+  var r = reportData(day, S.repSpan);
+  return 'Hollywood Ice Creams - report ' + day + '\nOrders: ' + r.os.length + '  Items: ' + r.qty + '  Sales: AED ' + money(r.amt)
+    + '\nDelivered: ' + r.delivered + '/' + r.os.length + '  Entered in main system: ' + r.entered + '/' + r.os.length + '\n\nBy category'
+    + Object.keys(r.cats).map(function(c){
+      var m = r.mat[c];
+      return '\n\n' + c + ': ' + r.cats[c].q + ' items, AED ' + money(r.cats[c].a) + m.order.map(function(nm){ var it = m.items[nm];
+        return '\n  ' + nm + ': ' + it.q + (m.sizes.length > 1 || m.sizes[0] !== '-' ? ' (' + m.sizes.filter(function(z){ return it.s[z]; }).map(function(z){ return z + ' ' + it.s[z]; }).join(', ') + ')' : '') + '  AED ' + money(it.a); }).join('');
+    }).join('');
+}
+function vReports(){
+  var day = repDay(), span = S.repSpan || 1, r = reportData(day, span), n = r.os.length;
+  var mx = Math.max.apply(null, r.hours.concat([1]));
+  var catRows = Object.keys(r.cats).sort(function(a,b){ return r.cats[b].a - r.cats[a].a; }).map(function(c){ return '<tr><td>'+esc(c)+'</td><td>'+r.cats[c].q+'</td><td>'+money(r.cats[c].a)+'</td></tr>'; }).join('');
+  var itemRows = r.items.slice(0, 10).map(function(x){ return '<tr><td>'+esc(x.n)+' <small style="color:var(--muted)">'+esc(x.c)+'</small></td><td>'+x.q+'</td><td>'+money(x.a)+'</td></tr>'; }).join('');
+  var first = 24, last = -1; r.hours.forEach(function(h, i){ if (h){ if (i < first) first = i; if (i > last) last = i; } });
+  var bars = '', labs = '';
+  if (last >= 0){ for (var h = first; h <= last; h++){ bars += '<div style="height:'+Math.round(r.hours[h] / mx * 100)+'%" title="'+r.hours[h]+'"></div>'; labs += '<span>'+h+'</span>'; } }
+  return '<div class="page"><div class="bar"><div class="seg"><button data-act="repday" data-v="-1" aria-label="Previous day">\u25c0</button><button data-act="repday" data-v="0" aria-pressed="'+(day===today())+'">'+(day===today() ? 'Today' : day)+(span > 1 ? ' (last '+span+' days)' : '')+'</button><button data-act="repday" data-v="1" aria-label="Next day">\u25b6</button></div>'
+    + '<div class="seg"><button data-act="repspan" data-v="1" aria-pressed="'+(span===1)+'">Day</button><button data-act="repspan" data-v="7" aria-pressed="'+(span===7)+'">7 days</button><button data-act="repspan" data-v="30" aria-pressed="'+(span===30)+'">30 days</button></div><span class="sp"></span><button class="btn ghost sm" data-act="copyrep">Copy report</button></div>'
+    + (n ? '<div class="kpis"><div class="kpi"><small>Orders</small><b>'+n+'</b></div><div class="kpi"><small>Items</small><b>'+r.qty+'</b></div><div class="kpi"><small>Sales (AED)</small><b>'+money(r.amt)+'</b></div><div class="kpi"><small>Average order</small><b>'+money(r.amt / n)+'</b></div>'
+        + '<div class="kpi"><small>Delivered</small><b>'+r.delivered+' / '+n+'</b></div><div class="kpi"><small>Entered in main system</small><b>'+r.entered+' / '+n+'</b></div></div>'
+      + '<div class="card"><h3>By category</h3><table class="rtab"><tr><th>Category</th><th>Items</th><th>AED</th></tr>'+catRows+'</table></div>'
+      + Object.keys(r.mat).sort(function(a,b){ return r.cats[b].a - r.cats[a].a; }).map(function(c){
+          var m = r.mat[c], zs = m.sizes.filter(function(z){ return z !== '-'; }), colTot = {};
+          var mc = menu.filter(function(x){ return x.name === c; })[0], so = mc ? mc.sizes.map(function(z){ return z.label; }) : [];
+          zs.sort(function(x, y){ var i = so.indexOf(x), j = so.indexOf(y); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j); });
+          var head = '<tr><th>Item</th>' + zs.map(function(z){ return '<th>'+esc(z)+'</th>'; }).join('') + '<th>Total</th><th>AED</th></tr>';
+          var rows = m.order.slice().sort(function(a,b){ return m.items[b].q - m.items[a].q; }).map(function(nm){ var it = m.items[nm];
+            zs.forEach(function(z){ colTot[z] = (colTot[z] || 0) + (it.s[z] || 0); });
+            return '<tr><td>'+esc(nm)+'</td>' + zs.map(function(z){ return '<td>'+(it.s[z] || '\u2013')+'</td>'; }).join('') + '<td><b>'+it.q+'</b></td><td>'+money(it.a)+'</td></tr>'; }).join('');
+          var foot = '<tr><td><b>All</b></td>' + zs.map(function(z){ return '<td><b>'+(colTot[z] || 0)+'</b></td>'; }).join('') + '<td><b>'+r.cats[c].q+'</b></td><td><b>'+money(r.cats[c].a)+'</b></td></tr>';
+          return '<div class="card" style="overflow-x:auto"><h3>'+esc(c)+'</h3><table class="rtab">'+head+rows+foot+'</table></div>';
+        }).join('')
+      + '<div class="card"><h3>Top items</h3><table class="rtab"><tr><th>Item</th><th>Qty</th><th>AED</th></tr>'+itemRows+'</table></div>'
+      + '<div class="card"><h3>Orders by hour</h3><div class="hbar">'+bars+'</div><div class="hlab">'+labs+'</div></div>'
+      : '<div class="empty">No orders on this day.</div>')
+    + '<p class="hint" style="padding:0 6px">Only orders still stored on this tablet are counted (do not use Delete delivered orders if you want the history). Cancelled orders are not included.</p></div>';
 }
 
 function vSettings(){
@@ -662,12 +754,12 @@ function render(){
   var app = document.getElementById('app'), keep = {};
   document.body.dataset.img = ui.img; document.body.dataset.cols = ui.cols || 'auto';
   SCROLLERS.forEach(function(s){ var e = document.querySelector(s); if (e) keep[s] = [lastSig, e.scrollTop, e.scrollLeft, lastTab]; });
-  var body = S.tab==='new' ? vNew() : S.tab==='orders' ? vOrders() : S.tab==='totals' ? vTotals() : S.tab==='settings' ? vSettings() : vMenu();
+  var body = S.tab==='new' ? vNew() : S.tab==='orders' ? vOrders() : S.tab==='totals' ? vTotals() : S.tab==='settings' ? vSettings() : S.tab==='reports' ? vReports() : vMenu();
   var sig = S.tab + (S.cat || '') + (S.edCat || '');
   lastSig = sig; lastTab = S.tab;
   var wantReveal = S.reveal; S.reveal = false;
   var wantAnim = S.anim; S.anim = null;
-  app.innerHTML = vHeader() + '<main>' + body + '</main>' + vSheets();
+  app.innerHTML = vHeader() + '<main>' + body + '</main>' + vSheets() + (S.nav ? vDrawer() : '');
   paintSync();
   SCROLLERS.forEach(function(s){
     var e = document.querySelector(s), k = keep[s];
@@ -825,6 +917,12 @@ document.addEventListener('click', function(e){
     case 'clearask': S.clearAsk = true; break;
     case 'clearno': S.clearAsk = false; break;
     case 'clearyes': db.orders = db.orders.filter(function(o){ return !(o.delivered && o.entered); }); S.clearAsk = false; saveOrders(); break;
+    case 'opennav': S.nav = true; break;
+    case 'closenav': if (e && e.target && e.target.closest && e.target.closest('.drawer') && !e.target.closest('[data-act="gopage"]')) return; S.nav = false; break;
+    case 'gopage': S.nav = false; S.tab = d.v; S.cancelAsk = null; S.clearAsk = false; S.del = null; S.resetAsk = false; if (d.v !== 'menu') S.pinErr = false; break;
+    case 'repday': S.repDay = d.v === '0' ? today() : shiftDay(repDay(), +d.v); break;
+    case 'repspan': S.repSpan = +d.v; break;
+    case 'copyrep': try { navigator.clipboard.writeText(reportText(repDay())).then(function(){ toast('Report copied'); }, function(){ toast('Copy not allowed here'); }); } catch(err){ toast('Copy not allowed here'); } return;
     case 'enterview': S.enterView = d.id; break;
     case 'enterone':
       db.orders.forEach(function(o){ if (String(o.id) === d.no){ o.entered = true; if (isUuid(o.id)) queueEvent('order_entered', {id:o.id, entered:true}); } }); saveOrders(); break;
@@ -1038,7 +1136,8 @@ kickSync();
     var A = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
     if (!A || !A.addListener) return;
     A.addListener('backButton', function(){
-      if (S.exitAsk){ S.exitAsk = false; }
+      if (S.nav){ S.nav = false; }
+      else if (S.exitAsk){ S.exitAsk = false; }
       else if (S.slip){ S.slip = null; }
       else if (S.sheet){ S.sheet = null; }
       else if (S.review){ S.review = false; }
