@@ -152,6 +152,28 @@ td .inp{width:90px;text-align:right}
 .ed .list .btn{margin-top:4px}
 @media (max-width:900px){.ed{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.ed .list{flex-direction:row;overflow-x:auto;overflow-y:hidden}}
 @media (max-width:900px){.sale{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) 42%}.rail{flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:8px 10px}.rail .cat{width:auto;white-space:nowrap;flex:none}.panel{border-left:0;border-top:1px solid var(--line)}}
+/* compact phone layout */
+.sale>*{min-width:0}.menu{min-width:0}
+@media (max-width:700px){
+  header.top{padding:6px 10px;gap:6px 8px}
+  .brand{font-size:16px}.brand small{display:none}
+  .logo{width:36px;height:36px;font-size:9px}
+  nav.tabs{width:100%;overflow-x:auto;gap:4px;padding-bottom:2px;scrollbar-width:none}
+  nav.tabs::-webkit-scrollbar{display:none}
+  nav.tabs button{padding:6px 12px;min-height:40px;font-size:14px;flex:none;white-space:nowrap}
+  .sale{grid-template-rows:auto minmax(0,1fr) 40%}
+  .rail .cat{min-height:44px;font-size:13px;padding:4px 10px 4px 4px}
+  .rail .cat img,.rail .cat .ph{width:32px;height:32px}
+  .items{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:6px 8px 12px}
+  .item .pic{aspect-ratio:auto;height:56px;font-size:24px}
+  .item b{font-size:13px}.item .body{padding:5px 7px 7px}.item .desc{display:none}
+  .price{width:36px;height:36px;top:4px;right:4px}.price small{display:none}.price span{font-size:12px}.price span.rng{font-size:9px}
+  .page{padding:10px}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .quick{grid-template-columns:repeat(2,1fr)}
+  .fgrid{grid-template-columns:1fr}
+  .tbl,.card{overflow-x:auto}
+}
 @media print{body{overflow:visible}#app,#toast{display:none}.scrim{position:static;background:none;padding:0}.sheet{box-shadow:none;width:100%}.btns,.sheet h3,.sheet p{display:none}}
 </style>
 </head>
