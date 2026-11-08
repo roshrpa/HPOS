@@ -632,13 +632,16 @@ function totals(){
 function vBills(){
   var list = toEnter().slice().sort(function(a,b){ return a.t - b.t; }), n = list.length;
   var amt = list.reduce(function(a,o){ return a + totalAmt(o.lines); }, 0);
+  var lastDay = '', dayTot = {};
+  list.forEach(function(o){ var y = ymd(o.t); dayTot[y] = dayTot[y] || {n:0, a:0}; dayTot[y].n++; dayTot[y].a += totalAmt(o.lines); });
   var cards = list.map(function(o){
-    var d = new Date(o.t);
+    var d = new Date(o.t), y = ymd(o.t), head = '';
+    if (y !== lastDay){ lastDay = y; head = '<div class="dayhead">'+(y === today() ? 'Today' : y === shiftDay(today(), -1) ? 'Yesterday' : d.toLocaleDateString([], {weekday:'short', day:'numeric', month:'short', year:'numeric'}))+'<span>'+dayTot[y].n+' to enter \u00b7 AED '+money(dayTot[y].a)+'</span></div>'; }
     var when = d.toLocaleDateString([], {day:'numeric', month:'short'}) + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     var li = o.lines.map(function(l){
       return '<li><i>'+l.qty+'\u00d7</i><span>'+(l.size?'<span class="size">'+esc(l.size)+'</span>':'')+esc(l.name)+' <small>'+esc(l.cat)+'</small></span><span class="amt">'+money(l.qty*l.price)+'</span></li>';
     }).join('');
-    return '<article class="ord"><div class="hd"><span class="no">#'+orderLabel(o)+'</span><span class="pill '+(o.delivered?'d':'p')+'">'+(o.delivered?'Delivered':'Waiting')+'</span><span class="meta">'+when+'</span></div>'
+    return head + '<article class="ord"><div class="hd"><span class="no">#'+orderLabel(o)+'</span><span class="pill '+(o.delivered?'d':'p')+'">'+(o.delivered?'Delivered':'Waiting')+'</span><span class="meta">'+when+'</span></div>'
       + '<ul>'+li+'</ul>' + (o.note ? '<div class="note">'+esc(o.note)+'</div>' : '')
       + '<div class="sum"><span>Total \u00b7 '+(o.pay === 'cash' ? 'Cash' : o.pay === 'card' ? 'Card' : 'Unpaid')+'</span><span>AED '+money(totalAmt(o.lines))+'</span></div>'
       + '<div class="act"><button class="btn ghost sm" data-act="copyone" data-no="'+o.id+'">Copy</button><button class="btn good sm" data-act="enterone" data-no="'+o.id+'">Mark entered</button></div></article>';
