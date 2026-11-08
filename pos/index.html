@@ -353,10 +353,36 @@ function fdate(t){ var d = new Date(t); return d.toLocaleDateString('en-GB', {da
 function matOpts(sel){ return db.inv.materials.map(function(m){ return '<option value="'+m.id+'"'+(m.id===sel?' selected':'')+'>'+esc(m.name)+' ('+esc(m.unit)+')</option>'; }).join(''); }
 
 function vInv(){
-  var tabs = [['over','Overview'],['buy','Buy / waste'],['count','Stock count'],['var','Variance'],['rec','Recipes'],['mat','Materials']];
+  var tabs = [['daily','Daily use'],['over','Overview'],['buy','Buy / waste'],['count','Stock count'],['var','Variance'],['rec','Recipes'],['mat','Materials']];
   var seg = '<div class="seg" style="overflow-x:auto">' + tabs.map(function(t){ return '<button data-act="invtab" data-id="'+t[0]+'" aria-pressed="'+(S.inv===t[0])+'">'+t[1]+'</button>'; }).join('') + '</div>';
-  var body = S.inv === 'over' ? invOver() : S.inv === 'buy' ? invBuy() : S.inv === 'count' ? invCount() : S.inv === 'var' ? invVar() : S.inv === 'rec' ? invRec() : invMat();
+  var body = S.inv === 'daily' ? invDaily() : S.inv === 'over' ? invOver() : S.inv === 'buy' ? invBuy() : S.inv === 'count' ? invCount() : S.inv === 'var' ? invVar() : S.inv === 'rec' ? invRec() : invMat();
   return '<div class="page"><div class="bar">' + seg + '</div>' + body + '</div>';
+}
+function sday(sl){ return sl.day || new Date(sl.t).toLocaleDateString('en-CA'); }
+function shiftDate(d, k){ var x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + k); return x.toLocaleDateString('en-CA'); }
+function usedOn(day){
+  var u = {};
+  db.sales.forEach(function(sl){ if (sl.void || sday(sl) !== day) return; sl.lines.forEach(function(l){
+    var r = db.inv.recipes[rkey(l.cat, l.size)]; if (!r) return;
+    r.forEach(function(x){ u[x.m] = (u[x.m] || 0) + x.q * l.qty; });
+  }); });
+  return u;
+}
+function invDaily(){
+  var day = S.dayUse || today(), prev = shiftDate(day, -1), U = usedOn(day), P = usedOn(prev), E = expectedMap();
+  function lab(d){ return d === today() ? 'Today' : d === shiftDate(today(), -1) ? 'Yesterday' : d; }
+  function block(title, cup){
+    var rows = db.inv.materials.filter(function(m){ return !!m.cup === cup; }).map(function(m){
+      var e = E[m.id], low = e.exp <= m.min;
+      return '<tr><td>'+esc(m.name)+'</td><td class="n">'+num(P[m.id] || 0)+'</td><td class="n"><b>'+num(U[m.id] || 0)+'</b></td><td class="n"><b'+(low?' style="color:var(--pink-dk)"':'')+'>'+num(e.exp)+'</b></td></tr>';
+    }).join('');
+    var tp = 0, tu = 0; db.inv.materials.forEach(function(m){ if (!!m.cup === cup){ tp += P[m.id] || 0; tu += U[m.id] || 0; } });
+    return '<div class="tbl"><h3>'+title+'</h3><table><thead><tr><th>Item</th><th class="n">'+esc(lab(prev))+'</th><th class="n">'+esc(lab(day))+'</th><th class="n">In stock now</th></tr></thead><tbody>'+rows
+      + '<tr><td><b>Total</b></td><td class="n"><b>'+num(tp)+'</b></td><td class="n"><b>'+num(tu)+'</b></td><td></td></tr></tbody></table></div>';
+  }
+  return '<div class="seg" style="margin-bottom:10px"><button data-act="dayuse" data-v="-1" aria-label="Previous day">\u25c0</button><button data-act="dayuse" data-v="0" aria-pressed="'+(day===today())+'">'+esc(lab(day))+'</button><button data-act="dayuse" data-v="1" aria-label="Next day">\u25b6</button></div>'
+    + '<p style="color:var(--muted);margin:0 0 10px">Cups, plates and bowls used by the sales on each day, next to what should be in stock now. Voided bills are not counted.</p>'
+    + block('Cups, plates and bowls', true) + block('Lids', false);
 }
 function invOver(){
   var E = expectedMap();
@@ -585,7 +611,7 @@ function applyRemote(events){
 function tabletOrders(){ return (db.tOrders || []).filter(function(o){ return o.status === 'new'; }).sort(function(a, b){ return b.t - a.t; }); }
 function tOrderLabel(o){ return (o.dev ? o.dev + '-' : '') + o.no; }
 
-var S = {fromOrder:null, tabOpen:false, closeDate:null, unlocked:false, gateErr:false, gateTry:'', disc:null, discForm:null, voidForm:null, inv:'over', cnt:{}, lastCount:null, recCat:null, matDel:null, edCat:null, del:null, resetAsk:false, imgTarget:null, tab:'sale', cat:menu[0].id, cart:[], sheet:null, pay:null, tendered:'', receipt:null, range:'today', voidAsk:null};
+var S = {fromOrder:null, tabOpen:false, closeDate:null, unlocked:false, gateErr:false, gateTry:'', disc:null, discForm:null, voidForm:null, inv:'daily', cnt:{}, lastCount:null, recCat:null, matDel:null, edCat:null, del:null, resetAsk:false, imgTarget:null, tab:'sale', cat:menu[0].id, cart:[], sheet:null, pay:null, tendered:'', receipt:null, range:'today', voidAsk:null};
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function byId(a, id){ return a.filter(function(x){ return x.id === id; })[0]; }
 function src(x){ return x ? (IMGS[x] || x) : ''; }
@@ -1092,6 +1118,7 @@ document.addEventListener('click', function(e){
       setg().pinOn = !setg().pinOn; S.unlocked = true; save(); break;
     case 'tgvat': db.settings.vat = !db.settings.vat; save(); break;
     case 'tgzero': db.settings.allowZero = !db.settings.allowZero; save(); break;
+    case 'dayuse': S.dayUse = d.v === '0' ? today() : shiftDate(S.dayUse || today(), +d.v); break;
     case 'invtab': S.inv = d.id; S.matDel = null; break;
     case 'reccat': S.recCat = d.id; break;
     case 'addrec': db.inv.recipes[d.k] = db.inv.recipes[d.k] || []; db.inv.recipes[d.k].push({m:db.inv.materials[0].id, q:1}); save(); break;
