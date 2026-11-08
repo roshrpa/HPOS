@@ -310,6 +310,8 @@ nav.tabs button.navbtn span{font-size:14px}
 .szrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .szc{background:#f6eef1;border-radius:12px;padding:6px 14px;min-width:84px;text-align:center}
 .szc small{display:block;color:var(--muted);font-weight:600;font-size:12px}.szc b{font-size:22px}
+.rtab.compact{font-size:14px}.rtab.compact td,.rtab.compact th{padding:7px 4px}
+@media (max-width:700px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:8px}.kpi{padding:8px 10px;border-radius:12px}.kpi b{font-size:19px}.kpi small{font-size:11px}}
 </style>
 </head>
 <body>
@@ -541,8 +543,15 @@ function vReports(){
     + '<div class="seg"><button data-act="repspan" data-v="1" aria-pressed="'+(span===1)+'">Day</button><button data-act="repspan" data-v="7" aria-pressed="'+(span===7)+'">7 days</button><button data-act="repspan" data-v="30" aria-pressed="'+(span===30)+'">30 days</button></div><span class="sp"></span><button class="btn ghost sm" data-act="copyrep">Copy report</button></div>'
     + (n ? '<div class="kpis"><div class="kpi"><small>Orders</small><b>'+n+'</b></div><div class="kpi"><small>Items</small><b>'+r.qty+'</b></div><div class="kpi"><small>Sales (AED)</small><b>'+money(r.amt)+'</b></div><div class="kpi"><small>Cash (AED)</small><b>'+money(r.pay.cash.a)+'</b><small>'+r.pay.cash.n+' orders</small></div><div class="kpi"><small>Card (AED)</small><b>'+money(r.pay.card.a)+'</b><small>'+r.pay.card.n+' orders</small></div><div class="kpi"><small>Unpaid (AED)</small><b>'+money(r.pay.unpaid.a)+'</b><small>'+r.pay.unpaid.n+' orders</small></div><div class="kpi"><small>Average order</small><b>'+money(r.amt / n)+'</b></div>'
         + '<div class="kpi"><small>Delivered</small><b>'+r.delivered+' / '+n+'</b></div><div class="kpi"><small>Entered in main system</small><b>'+r.entered+' / '+n+'</b></div></div>'
-      + '<div class="card"><h3>By size</h3><p class="hint">How many of each size were sold in every category.</p>'
-        + sizeTotals(r).map(function(x){ return '<div style="padding:10px 0;border-top:1px solid var(--line)"><b>'+esc(x.cat)+'</b><div class="szrow">'+x.parts.map(function(q){ return '<span class="szc"><small>'+esc(q.z)+'</small><b>'+q.q+'</b></span>'; }).join('')+'</div></div>'; }).join('') + '</div>'
+      + (function(){
+          var st = sizeTotals(r), cols = [], pref = ['Small','Medium','Regular','Cup','Large'];
+          st.forEach(function(x){ x.parts.forEach(function(q){ if (q.z !== 'Qty' && cols.indexOf(q.z) < 0) cols.push(q.z); }); });
+          cols.sort(function(a,b){ var i = pref.indexOf(a), j = pref.indexOf(b); return (i < 0 ? 9 : i) - (j < 0 ? 9 : j); });
+          var head = '<tr><th>Category</th>' + cols.map(function(z){ return '<th>'+esc(z)+'</th>'; }).join('') + '<th>Total</th></tr>';
+          var rows = st.map(function(x){ var m = {}; x.parts.forEach(function(q){ m[q.z] = q.q; });
+            return '<tr><td>'+esc(x.cat)+'</td>' + cols.map(function(z){ return '<td>'+(m[z] || '\u2013')+'</td>'; }).join('') + '<td><b>'+x.q+'</b></td></tr>'; }).join('');
+          return '<div class="card" style="padding:12px 10px;overflow-x:auto"><h3 style="margin-bottom:6px">Sold by size</h3><table class="rtab compact">'+head+rows+'</table></div>';
+        })()
       + '<div class="card"><h3>By category</h3><table class="rtab"><tr><th>Category</th><th>Items</th><th>AED</th></tr>'+catRows+'</table></div>'
       + Object.keys(r.mat).sort(function(a,b){ return r.cats[b].a - r.cats[a].a; }).map(function(c){
           var m = r.mat[c], zs = m.sizes.filter(function(z){ return z !== '-'; }), colTot = {};
