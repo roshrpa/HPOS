@@ -54,7 +54,7 @@ jobs:
 
       - name: Sign APK with the fixed Hollywood key
         env:
-          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD || 'Hollywood2026' }}
         run: |
           if [ -z "$KS_PASS" ]; then
             echo "Secret KEYSTORE_PASSWORD is missing. Add it in Settings > Secrets and variables > Actions."
