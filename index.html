@@ -161,7 +161,10 @@ main{flex:1;min-height:0;display:flex}
 .rev li{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:20px;font-weight:600;align-items:center}
 .rev li i{font-style:normal;color:var(--pink);min-width:42px}
 .rev li em{font-style:normal;font-size:13px;color:#fff;background:var(--plum);border-radius:7px;padding:1px 8px}
-.rev li .amt{margin-left:auto;font-size:16px}
+.rev li.rcat{font-size:13px;font-weight:700;color:var(--plum);text-transform:uppercase;letter-spacing:.5px;padding:10px 0 2px;border-bottom:2px solid var(--plum)}
+.rev li span{flex:1;min-width:0}
+.rev li em{margin-right:6px}
+.rev li .amt{flex:none;margin-left:auto;font-size:16px}
 .btns{display:flex;gap:10px;margin-top:14px}
 .btns .btn{flex:1}
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 22px;border-radius:99px;font-weight:600;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
@@ -768,8 +771,12 @@ function vSheets(){
       + '<button class="btn ghost" style="width:100%" data-act="closesheet">Cancel</button></div></div>';
   }
   if (S.review){
-    var li = S.cart.map(function(l){
-      return '<li><i>'+l.qty+'×</i><span>'+esc(l.name)+'</span>'+(l.size?'<em>'+esc(l.size)+'</em>':'')+'<span class="amt">'+money(l.qty * l.price)+'</span></li>';
+    var rc = [], rg = {};
+    S.cart.forEach(function(l){ if (!rg[l.cat]){ rg[l.cat] = []; rc.push(l.cat); } rg[l.cat].push(l); });
+    var li = rc.map(function(cn){
+      return '<li class="rcat">'+esc(cn)+'</li>' + rg[cn].map(function(l){
+        return '<li><i>'+l.qty+'×</i><span>'+(l.size?'<em>'+esc(l.size)+'</em> ':'')+esc(l.name)+'</span><span class="amt">'+money(l.qty * l.price)+'</span></li>';
+      }).join('');
     }).join('');
     return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Confirm order"><h3>Order #'+(S.editing ? '' : (sync.dev ? sync.dev + '-' : ''))+curNo()+'</h3><p>Read this back to the customer. '+totalQty(S.cart)+' items.</p>'
       + '<ul class="rev">'+li+'</ul><div class="payrow">' + [['cash','Cash'],['card','Card'],['','Pay later']].map(function(x){ return '<button data-act="setpay" data-v="'+x[0]+'" aria-pressed="'+((S.pay||'')===x[0])+'">'+x[1]+'</button>'; }).join('') + '</div><div class="tot"><span>Total</span><span>AED '+money(totalAmt(S.cart))+'</span></div>' + (S.note ? '<p style="color:var(--ink);margin-top:8px">Note: '+esc(S.note)+'</p>' : '')
