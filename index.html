@@ -298,6 +298,9 @@ nav.tabs button.navbtn span{font-size:14px}
 .chip.pay{border-color:var(--plum);color:var(--plum)} .chip.pay.unpaid{border-color:#c0392b;color:#c0392b;background:#fdecea}
 .dayhead{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;padding:6px 4px 0;font-weight:700;font-size:17px}
 .dayhead span{font-weight:600;font-size:14px;color:var(--muted)}
+.szrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.szc{background:#f6eef1;border-radius:12px;padding:6px 14px;min-width:84px;text-align:center}
+.szc small{display:block;color:var(--muted);font-weight:600;font-size:12px}.szc b{font-size:22px}
 </style>
 </head>
 <body>
@@ -497,11 +500,20 @@ function reportData(day, span){
     pay:['cash','card',''].reduce(function(m, k){ var f = os.filter(function(o){ return (o.pay || '') === k; }); m[k || 'unpaid'] = {n:f.length, a:f.reduce(function(a,o){ return a + totalAmt(o.lines); }, 0)}; return m; }, {}),
     delivered:os.filter(function(o){ return o.delivered; }).length, entered:os.filter(function(o){ return o.entered; }).length};
 }
+function sizeTotals(r){
+  return Object.keys(r.mat).sort(function(a,b){ return r.cats[b].a - r.cats[a].a; }).map(function(c){
+    var m = r.mat[c], t = {}, mc = menu.filter(function(x){ return x.name === c; })[0], so = mc ? mc.sizes.map(function(z){ return z.label; }) : [];
+    m.order.forEach(function(nm){ Object.keys(m.items[nm].s).forEach(function(z){ t[z] = (t[z] || 0) + m.items[nm].s[z]; }); });
+    var zs = Object.keys(t).sort(function(x, y){ var i = so.indexOf(x), j = so.indexOf(y); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j); });
+    return {cat:c, parts:zs.map(function(z){ return {z:z === '-' ? 'Qty' : z, q:t[z]}; }), q:r.cats[c].q};
+  });
+}
 function reportText(day){
   var r = reportData(day, S.repSpan);
   return 'Hollywood Ice Creams - report ' + day + '\nOrders: ' + r.os.length + '  Items: ' + r.qty + '  Sales: AED ' + money(r.amt)
     + '\nCash: AED ' + money(r.pay.cash.a) + ' (' + r.pay.cash.n + ')  Card: AED ' + money(r.pay.card.a) + ' (' + r.pay.card.n + ')  Unpaid: AED ' + money(r.pay.unpaid.a) + ' (' + r.pay.unpaid.n + ')'
-    + '\nDelivered: ' + r.delivered + '/' + r.os.length + '  Entered in main system: ' + r.entered + '/' + r.os.length + '\n\nBy category'
+    + '\n\nBy size' + sizeTotals(r).map(function(x){ return '\n  ' + x.cat + ': ' + x.parts.map(function(q){ return q.z + ' ' + q.q; }).join(', '); }).join('')
+    + '\n\nDelivered: ' + r.delivered + '/' + r.os.length + '  Entered in main system: ' + r.entered + '/' + r.os.length + '\n\nBy category'
     + Object.keys(r.cats).map(function(c){
       var m = r.mat[c];
       return '\n\n' + c + ': ' + r.cats[c].q + ' items, AED ' + money(r.cats[c].a) + m.order.map(function(nm){ var it = m.items[nm];
@@ -520,6 +532,8 @@ function vReports(){
     + '<div class="seg"><button data-act="repspan" data-v="1" aria-pressed="'+(span===1)+'">Day</button><button data-act="repspan" data-v="7" aria-pressed="'+(span===7)+'">7 days</button><button data-act="repspan" data-v="30" aria-pressed="'+(span===30)+'">30 days</button></div><span class="sp"></span><button class="btn ghost sm" data-act="copyrep">Copy report</button></div>'
     + (n ? '<div class="kpis"><div class="kpi"><small>Orders</small><b>'+n+'</b></div><div class="kpi"><small>Items</small><b>'+r.qty+'</b></div><div class="kpi"><small>Sales (AED)</small><b>'+money(r.amt)+'</b></div><div class="kpi"><small>Cash (AED)</small><b>'+money(r.pay.cash.a)+'</b><small>'+r.pay.cash.n+' orders</small></div><div class="kpi"><small>Card (AED)</small><b>'+money(r.pay.card.a)+'</b><small>'+r.pay.card.n+' orders</small></div><div class="kpi"><small>Unpaid (AED)</small><b>'+money(r.pay.unpaid.a)+'</b><small>'+r.pay.unpaid.n+' orders</small></div><div class="kpi"><small>Average order</small><b>'+money(r.amt / n)+'</b></div>'
         + '<div class="kpi"><small>Delivered</small><b>'+r.delivered+' / '+n+'</b></div><div class="kpi"><small>Entered in main system</small><b>'+r.entered+' / '+n+'</b></div></div>'
+      + '<div class="card"><h3>By size</h3><p class="hint">How many of each size were sold in every category.</p>'
+        + sizeTotals(r).map(function(x){ return '<div style="padding:10px 0;border-top:1px solid var(--line)"><b>'+esc(x.cat)+'</b><div class="szrow">'+x.parts.map(function(q){ return '<span class="szc"><small>'+esc(q.z)+'</small><b>'+q.q+'</b></span>'; }).join('')+'</div></div>'; }).join('') + '</div>'
       + '<div class="card"><h3>By category</h3><table class="rtab"><tr><th>Category</th><th>Items</th><th>AED</th></tr>'+catRows+'</table></div>'
       + Object.keys(r.mat).sort(function(a,b){ return r.cats[b].a - r.cats[a].a; }).map(function(c){
           var m = r.mat[c], zs = m.sizes.filter(function(z){ return z !== '-'; }), colTot = {};
