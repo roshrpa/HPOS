@@ -524,8 +524,28 @@ function totals(){
   });
 }
 
+function vBills(){
+  var list = toEnter().slice().sort(function(a,b){ return a.t - b.t; }), n = list.length;
+  var amt = list.reduce(function(a,o){ return a + totalAmt(o.lines); }, 0);
+  var cards = list.map(function(o){
+    var d = new Date(o.t);
+    var when = d.toLocaleDateString([], {day:'numeric', month:'short'}) + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    var li = o.lines.map(function(l){
+      return '<li><i>'+l.qty+'\u00d7</i><span>'+(l.size?'<span class="size">'+esc(l.size)+'</span>':'')+esc(l.name)+' <small>'+esc(l.cat)+'</small></span><span class="amt">'+money(l.qty*l.price)+'</span></li>';
+    }).join('');
+    return '<article class="ord"><div class="hd"><span class="no">#'+orderLabel(o)+'</span><span class="pill '+(o.delivered?'d':'p')+'">'+(o.delivered?'Delivered':'Waiting')+'</span><span class="meta">'+when+'</span></div>'
+      + '<ul>'+li+'</ul>' + (o.note ? '<div class="note">'+esc(o.note)+'</div>' : '')
+      + '<div class="sum"><span>Total</span><span>AED '+money(totalAmt(o.lines))+'</span></div>'
+      + '<div class="act"><button class="btn ghost sm" data-act="copyone" data-no="'+o.id+'">Copy</button><button class="btn good sm" data-act="enterone" data-no="'+o.id+'">Mark entered</button></div></article>';
+  }).join('');
+  return '<div class="page"><div class="bar"><div><b style="font-size:19px">'+n+' to enter \u00b7 AED '+money(amt)+'</b><div style="color:var(--muted);font-size:14px">Enter each bill in the main system, then tap Mark entered.</div></div><span class="sp"></span>'
+    + '<div class="seg"><button data-act="enterview" data-id="bills" aria-pressed="true">Bills</button><button data-act="enterview" data-id="totals" aria-pressed="false">Totals</button></div>'
+    + '<button class="btn good sm" data-act="doneall">Mark all entered</button></div><div class="orders">'+cards+'</div></div>';
+}
+
 function vTotals(){
   var g = totals(), n = toEnter().length;
+  if (n && S.enterView !== 'totals') return vBills();
   if (!n) return '<div class="page"><div class="empty">Everything is entered in the main system.<br>Nothing left to enter.</div></div>';
   var html = g.map(function(x){
     return '<section class="group"><h3>'+esc(x.cat)+'</h3>'
@@ -534,7 +554,7 @@ function vTotals(){
   }).join('');
   var amt = toEnter().reduce(function(a,o){ return a + totalAmt(o.lines); }, 0);
   return '<div class="page"><div class="bar"><div><b style="font-size:19px">'+n+' to enter '+(n===1?'order':'orders')+' · AED '+money(amt)+'</b><div style="color:var(--muted);font-size:14px">Enter these in the main system, then tap Mark all entered. (Delivery to the customer is marked in the Orders tab.)</div></div><span class="sp"></span>'
-    + '<button class="btn ghost sm" data-act="copy">Copy list</button><button class="btn good sm" data-act="doneall">Mark all entered</button></div>'+html+'</div>';
+    + '<div class="seg"><button data-act="enterview" data-id="bills" aria-pressed="false">Bills</button><button data-act="enterview" data-id="totals" aria-pressed="true">Totals</button></div><button class="btn ghost sm" data-act="copy">Copy list</button><button class="btn good sm" data-act="doneall">Mark all entered</button></div>'+html+'</div>';
 }
 
 /* Menu editor */
@@ -805,6 +825,14 @@ document.addEventListener('click', function(e){
     case 'clearask': S.clearAsk = true; break;
     case 'clearno': S.clearAsk = false; break;
     case 'clearyes': db.orders = db.orders.filter(function(o){ return !(o.delivered && o.entered); }); S.clearAsk = false; saveOrders(); break;
+    case 'enterview': S.enterView = d.id; break;
+    case 'enterone':
+      db.orders.forEach(function(o){ if (String(o.id) === d.no){ o.entered = true; if (isUuid(o.id)) queueEvent('order_entered', {id:o.id, entered:true}); } }); saveOrders(); break;
+    case 'copyone':
+      var co = db.orders.filter(function(o){ return String(o.id) === d.no; })[0];
+      if (co){ var tx = 'Order #' + orderLabel(co) + '\n' + co.lines.map(function(l){ return l.qty + ' x ' + l.name + (l.size ? ' (' + l.size + ')' : '') + ' - ' + money(l.qty*l.price); }).join('\n') + '\nTotal AED ' + money(totalAmt(co.lines)) + (co.note ? '\nNote: ' + co.note : '');
+        try { navigator.clipboard.writeText(tx).then(function(){ toast('Bill copied'); }, function(){ toast('Copy not allowed here'); }); } catch(err){ toast('Copy not allowed here'); } }
+      return;
     case 'copy':
       try { navigator.clipboard.writeText(summaryText()).then(function(){ toast('List copied'); }, function(){ toast('Copy not allowed here'); }); }
       catch(err){ toast('Copy not allowed here'); }
