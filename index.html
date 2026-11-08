@@ -158,9 +158,13 @@ main{flex:1;min-height:0;display:flex}
 .sizebtn b{font-size:20px;font-weight:700}
 .sizebtn span{font-size:15px;color:var(--pink-dk);font-weight:600}
 .rev{list-style:none;margin:0 0 10px;padding:0}
+.revsheet{display:flex;flex-direction:column;overflow:hidden}
+.revsheet .rev{overflow-y:auto;flex:1 1 auto;min-height:0}
+.revsheet .payrow,.revsheet .tot,.revsheet .btns{flex:none}
+@media (max-width:700px){.rev li{font-size:17px;padding:7px 0}}
 .rev li{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:20px;font-weight:600;align-items:center}
 .rev li i{font-style:normal;color:var(--pink);min-width:42px}
-.rev li em{font-style:normal;font-size:13px;color:#fff;background:var(--plum);border-radius:7px;padding:1px 8px}
+.rev li em{display:inline-block;min-width:62px;text-align:center;white-space:nowrap;font-style:normal;font-size:13px;color:#fff;background:var(--plum);border-radius:7px;padding:1px 8px}
 .rev li.rcat{font-size:13px;font-weight:700;color:var(--plum);text-transform:uppercase;letter-spacing:.5px;padding:10px 0 2px;border-bottom:2px solid var(--plum)}
 .rev li span{flex:1;min-width:0}
 .rev li .qty button{width:38px;height:38px}
@@ -781,7 +785,7 @@ function vSheets(){
         return '<li><span>'+(l.size?'<em>'+esc(l.size)+'</em> ':'')+esc(l.name)+'</span><div class="qty"><button data-act="dec" data-i="'+ci+'" aria-label="Less">\u2212</button><output>'+l.qty+'</output><button data-act="inc" data-i="'+ci+'" aria-label="More">+</button></div><span class="amt">'+money(l.qty * l.price)+'</span></li>';
       }).join('');
     }).join('');
-    return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Confirm order"><h3>Order #'+(S.editing ? '' : (sync.dev ? sync.dev + '-' : ''))+curNo()+'</h3><p>Read this back to the customer. '+totalQty(S.cart)+' items.</p>'
+    return '<div class="scrim"><div class="sheet revsheet" role="dialog" aria-label="Confirm order"><h3>Order #'+(S.editing ? '' : (sync.dev ? sync.dev + '-' : ''))+curNo()+'</h3><p>Read this back to the customer. '+totalQty(S.cart)+' items.</p>'
       + '<ul class="rev">'+li+'</ul><div class="payrow">' + [['cash','Cash'],['card','Card'],['','Pay later']].map(function(x){ return '<button data-act="setpay" data-v="'+x[0]+'" aria-pressed="'+((S.pay||'')===x[0])+'">'+x[1]+'</button>'; }).join('') + '</div><div class="tot"><span>Total</span><span>AED '+money(totalAmt(S.cart))+'</span></div>' + (S.note ? '<p style="color:var(--ink);margin-top:8px">Note: '+esc(S.note)+'</p>' : '')
       + '<div class="btns"><button class="btn ghost" data-act="back">Edit</button><button class="btn primary" data-act="place">'+(S.editing ? 'Save changes' : 'Confirm order')+'</button></div></div></div>';
   }
