@@ -46,7 +46,11 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          P=gradle/wrapper/gradle-wrapper.properties
+          sed -i 's/-all.zip/-bin.zip/' $P
+          grep -q networkTimeout $P && sed -i 's/networkTimeout=.*/networkTimeout=300000/' $P || echo 'networkTimeout=300000' >> $P
+          for i in 1 2 3; do ./gradlew assembleDebug && break || { echo retry $i; sleep 20; }; done
+          ls app/build/outputs/apk/debug/*.apk
 
       - name: Sign APK with the fixed Hollywood key
         env:
