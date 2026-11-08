@@ -163,8 +163,10 @@ main{flex:1;min-height:0;display:flex}
 .rev li em{font-style:normal;font-size:13px;color:#fff;background:var(--plum);border-radius:7px;padding:1px 8px}
 .rev li.rcat{font-size:13px;font-weight:700;color:var(--plum);text-transform:uppercase;letter-spacing:.5px;padding:10px 0 2px;border-bottom:2px solid var(--plum)}
 .rev li span{flex:1;min-width:0}
+.rev li .qty button{width:38px;height:38px}
+.rev li .qty{flex:none}
 .rev li em{margin-right:6px}
-.rev li .amt{flex:none;margin-left:auto;font-size:16px}
+.rev li .amt{flex:none;min-width:44px;text-align:right;margin-left:auto;font-size:16px}
 .btns{display:flex;gap:10px;margin-top:14px}
 .btns .btn{flex:1}
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 22px;border-radius:99px;font-weight:600;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
@@ -775,7 +777,8 @@ function vSheets(){
     S.cart.forEach(function(l){ if (!rg[l.cat]){ rg[l.cat] = []; rc.push(l.cat); } rg[l.cat].push(l); });
     var li = rc.map(function(cn){
       return '<li class="rcat">'+esc(cn)+'</li>' + rg[cn].map(function(l){
-        return '<li><i>'+l.qty+'×</i><span>'+(l.size?'<em>'+esc(l.size)+'</em> ':'')+esc(l.name)+'</span><span class="amt">'+money(l.qty * l.price)+'</span></li>';
+        var ci = S.cart.indexOf(l);
+        return '<li><span>'+(l.size?'<em>'+esc(l.size)+'</em> ':'')+esc(l.name)+'</span><div class="qty"><button data-act="dec" data-i="'+ci+'" aria-label="Less">\u2212</button><output>'+l.qty+'</output><button data-act="inc" data-i="'+ci+'" aria-label="More">+</button></div><span class="amt">'+money(l.qty * l.price)+'</span></li>';
       }).join('');
     }).join('');
     return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Confirm order"><h3>Order #'+(S.editing ? '' : (sync.dev ? sync.dev + '-' : ''))+curNo()+'</h3><p>Read this back to the customer. '+totalQty(S.cart)+' items.</p>'
@@ -921,7 +924,7 @@ document.addEventListener('click', function(e){
     case 'size': c = byId(menu, S.sheet.cat); addLine(c, byId(c.items, S.sheet.item), byId(c.sizes, d.z)); S.sheet = null; break;
     case 'closesheet': S.sheet = null; break;
     case 'inc': S.cart[+d.i].qty++; break;
-    case 'dec': S.cart[+d.i].qty--; if (S.cart[+d.i].qty <= 0) S.cart.splice(+d.i, 1); break;
+    case 'dec': S.cart[+d.i].qty--; if (S.cart[+d.i].qty <= 0) S.cart.splice(+d.i, 1); if (!S.cart.length) S.review = false; break;
     case 'clear': S.editing = null; S.cart = []; S.note = ''; S.cartOpen = false; break;
     case 'exitno': S.exitAsk = false; break;
     case 'exityes': try { window.Capacitor.Plugins.App.exitApp(); } catch(e){} return;
