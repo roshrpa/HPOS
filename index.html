@@ -125,12 +125,13 @@ main{flex:1;min-height:0;display:flex}
 .orders{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;align-items:start}
 .ord{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 1px 3px rgba(28,26,31,.1)}
 .ord.done{opacity:.78}
-.ord .hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.ord .hd{display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
 .ord .no{font-weight:700;font-size:26px;color:var(--pink)}
 .ord .meta{margin-left:auto;text-align:right;font-size:12px;color:var(--muted)}
 .pill{display:inline-block;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:600}
 .pill.p{background:var(--warn-bg);color:var(--warn)}
-.chip{white-space:nowrap;flex:none;margin-left:6px;border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:600;color:var(--muted)}
+.ord .hd .meta{margin-left:auto;white-space:nowrap}
+.chip{white-space:nowrap;flex:none;margin-left:0;border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:600;color:var(--muted)}
 .chip.on{border-color:var(--done);color:var(--done);background:var(--done-bg)}
 .pill.d{background:var(--done-bg);color:var(--done)}
 .ord ul{list-style:none;margin:0;padding:8px 16px}
@@ -290,6 +291,13 @@ nav.tabs button.navbtn span{font-size:14px}
 .hbar{display:flex;align-items:flex-end;gap:3px;height:90px;margin-top:6px}
 .hbar div{flex:1;background:var(--pink);border-radius:4px 4px 0 0;min-height:2px;position:relative}
 .hlab{display:flex;gap:3px;font-size:10px;color:var(--muted)}.hlab span{flex:1;text-align:center}
+
+.payrow{display:flex;gap:8px;margin:12px 0 4px}
+.payrow button{flex:1;min-height:52px;border-radius:14px;background:#fff;border:2px solid var(--line);font-weight:700;font-size:16px}
+.payrow button[aria-pressed="true"]{background:var(--pink);border-color:var(--pink);color:#fff}
+.chip.pay{border-color:var(--plum);color:var(--plum)} .chip.pay.unpaid{border-color:#c0392b;color:#c0392b;background:#fdecea}
+.dayhead{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;padding:6px 4px 0;font-weight:700;font-size:17px}
+.dayhead span{font-weight:600;font-size:14px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -486,11 +494,13 @@ function reportData(day, span){
     });
   });
   return {mat:mat, os:os, qty:qty, amt:amt, cats:cats, items:Object.keys(items).map(function(k){ return items[k]; }).sort(function(a,b){ return b.q - a.q; }), hours:hours,
+    pay:['cash','card',''].reduce(function(m, k){ var f = os.filter(function(o){ return (o.pay || '') === k; }); m[k || 'unpaid'] = {n:f.length, a:f.reduce(function(a,o){ return a + totalAmt(o.lines); }, 0)}; return m; }, {}),
     delivered:os.filter(function(o){ return o.delivered; }).length, entered:os.filter(function(o){ return o.entered; }).length};
 }
 function reportText(day){
   var r = reportData(day, S.repSpan);
   return 'Hollywood Ice Creams - report ' + day + '\nOrders: ' + r.os.length + '  Items: ' + r.qty + '  Sales: AED ' + money(r.amt)
+    + '\nCash: AED ' + money(r.pay.cash.a) + ' (' + r.pay.cash.n + ')  Card: AED ' + money(r.pay.card.a) + ' (' + r.pay.card.n + ')  Unpaid: AED ' + money(r.pay.unpaid.a) + ' (' + r.pay.unpaid.n + ')'
     + '\nDelivered: ' + r.delivered + '/' + r.os.length + '  Entered in main system: ' + r.entered + '/' + r.os.length + '\n\nBy category'
     + Object.keys(r.cats).map(function(c){
       var m = r.mat[c];
@@ -508,7 +518,7 @@ function vReports(){
   if (last >= 0){ for (var h = first; h <= last; h++){ bars += '<div style="height:'+Math.round(r.hours[h] / mx * 100)+'%" title="'+r.hours[h]+'"></div>'; labs += '<span>'+h+'</span>'; } }
   return '<div class="page"><div class="bar"><div class="seg"><button data-act="repday" data-v="-1" aria-label="Previous day">\u25c0</button><button data-act="repday" data-v="0" aria-pressed="'+(day===today())+'">'+(day===today() ? 'Today' : day)+(span > 1 ? ' (last '+span+' days)' : '')+'</button><button data-act="repday" data-v="1" aria-label="Next day">\u25b6</button></div>'
     + '<div class="seg"><button data-act="repspan" data-v="1" aria-pressed="'+(span===1)+'">Day</button><button data-act="repspan" data-v="7" aria-pressed="'+(span===7)+'">7 days</button><button data-act="repspan" data-v="30" aria-pressed="'+(span===30)+'">30 days</button></div><span class="sp"></span><button class="btn ghost sm" data-act="copyrep">Copy report</button></div>'
-    + (n ? '<div class="kpis"><div class="kpi"><small>Orders</small><b>'+n+'</b></div><div class="kpi"><small>Items</small><b>'+r.qty+'</b></div><div class="kpi"><small>Sales (AED)</small><b>'+money(r.amt)+'</b></div><div class="kpi"><small>Average order</small><b>'+money(r.amt / n)+'</b></div>'
+    + (n ? '<div class="kpis"><div class="kpi"><small>Orders</small><b>'+n+'</b></div><div class="kpi"><small>Items</small><b>'+r.qty+'</b></div><div class="kpi"><small>Sales (AED)</small><b>'+money(r.amt)+'</b></div><div class="kpi"><small>Cash (AED)</small><b>'+money(r.pay.cash.a)+'</b><small>'+r.pay.cash.n+' orders</small></div><div class="kpi"><small>Card (AED)</small><b>'+money(r.pay.card.a)+'</b><small>'+r.pay.card.n+' orders</small></div><div class="kpi"><small>Unpaid (AED)</small><b>'+money(r.pay.unpaid.a)+'</b><small>'+r.pay.unpaid.n+' orders</small></div><div class="kpi"><small>Average order</small><b>'+money(r.amt / n)+'</b></div>'
         + '<div class="kpi"><small>Delivered</small><b>'+r.delivered+' / '+n+'</b></div><div class="kpi"><small>Entered in main system</small><b>'+r.entered+' / '+n+'</b></div></div>'
       + '<div class="card"><h3>By category</h3><table class="rtab"><tr><th>Category</th><th>Items</th><th>AED</th></tr>'+catRows+'</table></div>'
       + Object.keys(r.mat).sort(function(a,b){ return r.cats[b].a - r.cats[a].a; }).map(function(c){
@@ -575,13 +585,16 @@ function vNew(){
 function vOrders(){
   var list = db.orders.filter(function(o){ return S.filter==='all' || (S.filter==='done') === !!o.delivered; }).slice().reverse();
   var nDone = db.orders.length - waiting().length;
+  var lastDay = '', dayTot = {};
+  list.forEach(function(o){ var y = ymd(o.t); dayTot[y] = dayTot[y] || {n:0, a:0}; dayTot[y].n++; dayTot[y].a += totalAmt(o.lines); });
   var cards = list.map(function(o){
-    var d = new Date(o.t);
+    var d = new Date(o.t), head = '', y = ymd(o.t);
+    if (y !== lastDay){ lastDay = y; head = '<div class="dayhead">'+(y === today() ? 'Today' : y === shiftDay(today(), -1) ? 'Yesterday' : d.toLocaleDateString([], {weekday:'short', day:'numeric', month:'short', year:'numeric'}))+'<span>'+dayTot[y].n+' orders \u00b7 AED '+money(dayTot[y].a)+'</span></div>'; }
     var when = d.toLocaleDateString([], {day:'numeric', month:'short'}) + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     var li = o.lines.map(function(l){
       return '<li><i>'+l.qty+'×</i><span>'+(l.size?'<span class="size">'+esc(l.size)+'</span>':'')+esc(l.name)+' <small>'+esc(l.cat)+'</small></span></li>';
     }).join('');
-    return '<article class="ord'+(o.delivered?' done':'')+'"><div class="hd"><span class="no">#'+orderLabel(o)+'</span><span class="pill '+(o.delivered?'d':'p')+'">'+(o.delivered?'Delivered':'Waiting')+'</span><button class="chip'+(o.entered?' on':'')+'" data-act="toggleentered" data-no="'+o.id+'">'+(o.entered?'Entered \u2713':'Not entered')+'</button><span class="meta">'+when+'</span></div>'
+    return head + '<article class="ord'+(o.delivered?' done':'')+'"><div class="hd"><span class="no">#'+orderLabel(o)+'</span><span class="pill '+(o.delivered?'d':'p')+'">'+(o.delivered?'Delivered':'Waiting')+'</span><button class="chip'+(o.entered?' on':'')+'" data-act="toggleentered" data-no="'+o.id+'">'+(o.entered?'Entered \u2713':'Not entered')+'</button><button class="chip pay'+(o.pay?'':' unpaid')+'" data-act="cyclepay" data-no="'+o.id+'">'+(o.pay === 'cash' ? 'Cash' : o.pay === 'card' ? 'Card' : 'Unpaid')+'</button><span class="meta">'+when+'</span></div>'
       + '<ul>'+li+'</ul>' + (o.note ? '<div class="note">'+esc(o.note)+'</div>' : '')
       + '<div class="sum"><span>Total</span><span>AED '+money(totalAmt(o.lines))+'</span></div>'
       + '<div class="act">' + (o.delivered
@@ -627,7 +640,7 @@ function vBills(){
     }).join('');
     return '<article class="ord"><div class="hd"><span class="no">#'+orderLabel(o)+'</span><span class="pill '+(o.delivered?'d':'p')+'">'+(o.delivered?'Delivered':'Waiting')+'</span><span class="meta">'+when+'</span></div>'
       + '<ul>'+li+'</ul>' + (o.note ? '<div class="note">'+esc(o.note)+'</div>' : '')
-      + '<div class="sum"><span>Total</span><span>AED '+money(totalAmt(o.lines))+'</span></div>'
+      + '<div class="sum"><span>Total \u00b7 '+(o.pay === 'cash' ? 'Cash' : o.pay === 'card' ? 'Card' : 'Unpaid')+'</span><span>AED '+money(totalAmt(o.lines))+'</span></div>'
       + '<div class="act"><button class="btn ghost sm" data-act="copyone" data-no="'+o.id+'">Copy</button><button class="btn good sm" data-act="enterone" data-no="'+o.id+'">Mark entered</button></div></article>';
   }).join('');
   return '<div class="page"><div class="bar"><div><b style="font-size:19px">'+n+' to enter \u00b7 AED '+money(amt)+'</b><div style="color:var(--muted);font-size:14px">Enter each bill in the main system, then tap Mark entered.</div></div><span class="sp"></span>'
@@ -742,7 +755,7 @@ function vSheets(){
       return '<li><i>'+l.qty+'×</i><span>'+esc(l.name)+'</span>'+(l.size?'<em>'+esc(l.size)+'</em>':'')+'<span class="amt">'+money(l.qty * l.price)+'</span></li>';
     }).join('');
     return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Confirm order"><h3>Order #'+(S.editing ? '' : (sync.dev ? sync.dev + '-' : ''))+curNo()+'</h3><p>Read this back to the customer. '+totalQty(S.cart)+' items.</p>'
-      + '<ul class="rev">'+li+'</ul><div class="tot"><span>Total</span><span>AED '+money(totalAmt(S.cart))+'</span></div>' + (S.note ? '<p style="color:var(--ink);margin-top:8px">Note: '+esc(S.note)+'</p>' : '')
+      + '<ul class="rev">'+li+'</ul><div class="payrow">' + [['cash','Cash'],['card','Card'],['','Pay later']].map(function(x){ return '<button data-act="setpay" data-v="'+x[0]+'" aria-pressed="'+((S.pay||'')===x[0])+'">'+x[1]+'</button>'; }).join('') + '</div><div class="tot"><span>Total</span><span>AED '+money(totalAmt(S.cart))+'</span></div>' + (S.note ? '<p style="color:var(--ink);margin-top:8px">Note: '+esc(S.note)+'</p>' : '')
       + '<div class="btns"><button class="btn ghost" data-act="back">Edit</button><button class="btn primary" data-act="place">'+(S.editing ? 'Save changes' : 'Confirm order')+'</button></div></div></div>';
   }
   return '';
@@ -867,7 +880,7 @@ document.addEventListener('click', function(e){
     case 'editord':
       if (S.cart.length && !S.editing){ toast('Finish or clear the current order first'); S.tab = 'new'; break; }
       var eo = byId(db.orders, +d.no) || db.orders.filter(function(o){ return String(o.id) === d.no; })[0];
-      if (eo){ S.cart = eo.lines.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }); S.note = eo.note || ''; S.editing = eo.id; S.tab = 'new'; S.cartOpen = true; }
+      if (eo){ S.cart = eo.lines.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }); S.note = eo.note || ''; S.pay = eo.pay || ''; S.editing = eo.id; S.tab = 'new'; S.cartOpen = true; }
       break;
     case 'canceledit': S.cart = []; S.note = ''; S.editing = null; S.cartOpen = false; break;
     case 'cancelask': S.cancelAsk = d.no; break;
@@ -892,21 +905,21 @@ document.addEventListener('click', function(e){
     case 'slipclose': S.slip = null; break;
     case 'slipprint': window.print(); return;
     case 'setauto': ui.autoslip = d.v === '1'; saveUi(); break;
-    case 'review': if (S.cart.length) S.review = true; S.cartOpen = false; break;
+    case 'review': if (S.cart.length){ S.review = true; if (!S.editing && S.pay === undefined) S.pay = ui.lastPay === undefined ? 'cash' : ui.lastPay; } S.cartOpen = false; break;
     case 'back': S.review = false; break;
     case 'place':
       if (S.editing){
         var oo = byId(db.orders, S.editing);
-        if (oo){ oo.lines = S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }); oo.note = S.note.trim(); saveOrders(); if (isUuid(oo.id)) queueEvent('order_update', {id:oo.id, lines:oo.lines, note:oo.note}); toast('Order #' + orderLabel(oo) + ' updated'); }
-        S.cart = []; S.note = ''; S.review = false; S.editing = null; S.cartOpen = false; S.tab = 'orders'; S.filter = 'pending';
+        if (oo){ oo.lines = S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }); oo.note = S.note.trim(); oo.pay = S.pay || ''; saveOrders(); if (isUuid(oo.id)) queueEvent('order_update', {id:oo.id, lines:oo.lines, note:oo.note, pay:oo.pay}); toast('Order #' + orderLabel(oo) + ' updated'); }
+        S.cart = []; S.note = ''; S.pay = undefined; S.review = false; S.editing = null; S.cartOpen = false; S.tab = 'orders'; S.filter = 'pending';
         break;
       }
       if (db.day !== today()){ db.day = today(); db.counter = 0; }
       db.counter++;
-      var no0 = {id:uuid(), no:db.counter, dev:sync.dev || '', t:Date.now(), lines:S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }), note:S.note.trim(), delivered:false, entered:false};
-      db.orders.push(no0); saveOrders(); queueEvent('order', {id:no0.id, no:no0.no, dev:no0.dev, day:today(), t:no0.t, lines:no0.lines, note:no0.note});
+      var no0 = {id:uuid(), no:db.counter, dev:sync.dev || '', t:Date.now(), lines:S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }), note:S.note.trim(), pay:S.pay || '', delivered:false, entered:false};
+      db.orders.push(no0); saveOrders(); ui.lastPay = no0.pay; saveUi(); queueEvent('order', {id:no0.id, no:no0.no, dev:no0.dev, day:today(), t:no0.t, lines:no0.lines, note:no0.note, pay:no0.pay});
       toast('Order #' + orderLabel(no0) + ' saved'); if (ui.autoslip) S.slip = no0.id;
-      S.cart = []; S.note = ''; S.review = false; S.cat = menu[0].id;
+      S.cart = []; S.note = ''; S.pay = undefined; S.review = false; S.cat = menu[0].id;
       break;
     case 'filter': S.filter = d.id; S.clearAsk = false; break;
     case 'done': case 'undo':
@@ -917,6 +930,9 @@ document.addEventListener('click', function(e){
     case 'clearask': S.clearAsk = true; break;
     case 'clearno': S.clearAsk = false; break;
     case 'clearyes': db.orders = db.orders.filter(function(o){ return !(o.delivered && o.entered); }); S.clearAsk = false; saveOrders(); break;
+    case 'setpay': S.pay = d.v; break;
+    case 'cyclepay':
+      db.orders.forEach(function(o){ if (String(o.id) === d.no){ o.pay = o.pay === 'cash' ? 'card' : o.pay === 'card' ? '' : 'cash'; if (isUuid(o.id)) queueEvent('order_pay', {id:o.id, pay:o.pay}); } }); saveOrders(); break;
     case 'opennav': S.nav = true; break;
     case 'closenav': if (e && e.target && e.target.closest && e.target.closest('.drawer') && !e.target.closest('[data-act="gopage"]')) return; S.nav = false; break;
     case 'gopage': S.nav = false; S.tab = d.v; S.cancelAsk = null; S.clearAsk = false; S.del = null; S.resetAsk = false; if (d.v !== 'menu') S.pinErr = false; break;
@@ -1086,15 +1102,17 @@ function applyRemote(events){
   events.forEach(function(e){
     var p = e.payload || {}, o = db.orders.filter(function(x){ return String(x.id) === String(p.id); })[0];
     if (e.type === 'order'){
-      if (!o && isUuid(p.id)){ db.orders.push({id:p.id, no:p.no, dev:p.dev || '', t:p.t || e.t, lines:p.lines || [], note:p.note || '', delivered:false, entered:false, remote:true}); changed = true; }
+      if (!o && isUuid(p.id)){ db.orders.push({id:p.id, no:p.no, dev:p.dev || '', t:p.t || e.t, lines:p.lines || [], note:p.note || '', pay:p.pay || '', delivered:false, entered:false, remote:true}); changed = true; }
     } else if (e.type === 'order_update'){
-      if (o){ o.lines = p.lines || o.lines; o.note = p.note || ''; changed = true; }
+      if (o){ o.lines = p.lines || o.lines; o.note = p.note || ''; if (p.pay !== undefined) o.pay = p.pay; changed = true; }
     } else if (e.type === 'order_cancel'){
       if (o){ db.orders = db.orders.filter(function(x){ return x !== o; }); changed = true; }
     } else if (e.type === 'order_done'){
       if (o){ o.delivered = o.entered = p.done !== false; changed = true; }
     } else if (e.type === 'order_delivered'){
       if (o){ o.delivered = p.delivered !== false; changed = true; }
+    } else if (e.type === 'order_pay'){
+      if (o){ o.pay = p.pay || ''; changed = true; }
     } else if (e.type === 'order_entered'){
       if (o){ o.entered = p.entered !== false; changed = true; }
     }
