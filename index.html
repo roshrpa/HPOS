@@ -130,6 +130,8 @@ main{flex:1;min-height:0;display:flex}
 .ord .meta{margin-left:auto;text-align:right;font-size:12px;color:var(--muted)}
 .pill{display:inline-block;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:600}
 .pill.p{background:var(--warn-bg);color:var(--warn)}
+.chip{white-space:nowrap;flex:none;margin-left:6px;border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:600;color:var(--muted)}
+.chip.on{border-color:var(--done);color:var(--done);background:var(--done-bg)}
 .pill.d{background:var(--done-bg);color:var(--done)}
 .ord ul{list-style:none;margin:0;padding:8px 16px}
 .ord li{display:flex;gap:10px;padding:5px 0;font-size:17px;font-weight:600;align-items:baseline}
@@ -385,7 +387,10 @@ function src(x){ return x ? (IMGS[x] || x) : ''; }
 function byId(arr, id){ return arr.filter(function(a){ return a.id === id; })[0]; }
 function curCat(){ return byId(menu, S.cat) || menu[0]; }
 function edCat(){ return byId(menu, S.edCat) || menu[0]; }
-function pending(){ return db.orders.filter(function(o){ return !o.done; }); }
+function waiting(){ return db.orders.filter(function(o){ return !o.delivered; }); }
+function toEnter(){ return db.orders.filter(function(o){ return !o.entered; }); }
+function pending(){ return waiting(); }
+(function(){ db.orders.forEach(function(o){ if (o.delivered === undefined){ o.delivered = !!o.done; o.entered = !!o.done; } }); })();
 function totalQty(lines){ return lines.reduce(function(a,l){ return a + l.qty; }, 0); }
 function totalAmt(lines){ return lines.reduce(function(a,l){ return a + l.qty * l.price; }, 0); }
 function money(n){ return (Math.round(n * 100) / 100).toString(); }
@@ -412,14 +417,14 @@ function pic(item, c){
 
 /* ---------- Views ---------- */
 function vHeader(){
-  var n = pending().length;
+  var n = waiting().length, ne = toEnter().length;
   function tab(id, label, extra){
     return '<button data-act="tab" data-v="'+id+'" aria-current="'+(S.tab===id)+'">'+label+(extra||'')+'</button>';
   }
   return '<header class="top"><div class="logo">HOLLY<br>WOOD</div><div class="brand">Hollywood Ice Creams<small>Car order pad</small></div><button id="syncpill" class="syncpill off" data-act="syncnow">Not connected</button><nav class="tabs">'
     + tab('new','New order', S.cart.length ? '<span class="badge">'+totalQty(S.cart)+'</span>' : '')
     + tab('orders','Orders', n ? '<span class="badge">'+n+'</span>' : '')
-    + tab('totals','To enter')
+    + tab('totals','To enter', ne ? '<span class="badge">'+ne+'</span>' : '')
     + tab('menu','Menu')
     + tab('settings','Settings')
     + '</nav></header>';
@@ -476,35 +481,35 @@ function vNew(){
 }
 
 function vOrders(){
-  var list = db.orders.filter(function(o){ return S.filter==='all' || (S.filter==='done') === !!o.done; }).slice().reverse();
-  var nDone = db.orders.length - pending().length;
+  var list = db.orders.filter(function(o){ return S.filter==='all' || (S.filter==='done') === !!o.delivered; }).slice().reverse();
+  var nDone = db.orders.length - waiting().length;
   var cards = list.map(function(o){
     var d = new Date(o.t);
     var when = d.toLocaleDateString([], {day:'numeric', month:'short'}) + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     var li = o.lines.map(function(l){
       return '<li><i>'+l.qty+'×</i><span>'+(l.size?'<span class="size">'+esc(l.size)+'</span>':'')+esc(l.name)+' <small>'+esc(l.cat)+'</small></span></li>';
     }).join('');
-    return '<article class="ord'+(o.done?' done':'')+'"><div class="hd"><span class="no">#'+orderLabel(o)+'</span><span class="pill '+(o.done?'d':'p')+'">'+(o.done?'In system':'Pending')+'</span><span class="meta">'+when+'</span></div>'
+    return '<article class="ord'+(o.delivered?' done':'')+'"><div class="hd"><span class="no">#'+orderLabel(o)+'</span><span class="pill '+(o.delivered?'d':'p')+'">'+(o.delivered?'Delivered':'Waiting')+'</span><button class="chip'+(o.entered?' on':'')+'" data-act="toggleentered" data-no="'+o.id+'">'+(o.entered?'Entered \u2713':'Not entered')+'</button><span class="meta">'+when+'</span></div>'
       + '<ul>'+li+'</ul>' + (o.note ? '<div class="note">'+esc(o.note)+'</div>' : '')
       + '<div class="sum"><span>Total</span><span>AED '+money(totalAmt(o.lines))+'</span></div>'
-      + '<div class="act">' + (o.done
-        ? '<button class="btn ghost sm" data-act="slip" data-no="'+o.id+'">Print slip</button><button class="btn ghost sm" data-act="undo" data-no="'+o.id+'">Mark pending</button>'
+      + '<div class="act">' + (o.delivered
+        ? '<button class="btn ghost sm" data-act="slip" data-no="'+o.id+'">Print slip</button><button class="btn ghost sm" data-act="undo" data-no="'+o.id+'">Back to waiting</button>'
         : '<button class="btn ghost sm" data-act="slip" data-no="'+o.id+'">Print slip</button><button class="btn ghost sm" data-act="editord" data-no="'+o.id+'">Edit</button>'
           + (S.cancelAsk === String(o.id) ? '<button class="btn primary sm" data-act="cancelyes" data-no="'+o.id+'">Delete order</button><button class="btn ghost sm" data-act="cancelno">Keep</button>'
                                   : '<button class="btn danger sm" data-act="cancelask" data-no="'+o.id+'">Cancel order</button>')
-          + '<button class="btn good sm" data-act="done" data-no="'+o.id+'">Mark done</button>') + '</div></article>';
+          + '<button class="btn good sm" data-act="done" data-no="'+o.id+'">Delivered</button>') + '</div></article>';
   }).join('');
   var clear = nDone ? (S.clearAsk
-    ? '<button class="btn ghost sm" data-act="clearno">Keep</button><button class="btn primary sm" data-act="clearyes">Delete '+nDone+' done</button>'
-    : '<button class="link" data-act="clearask">Delete done orders</button>') : '';
+    ? '<button class="btn ghost sm" data-act="clearno">Keep</button><button class="btn primary sm" data-act="clearyes">Delete '+nDone+' delivered</button>'
+    : '<button class="link" data-act="clearask">Delete delivered orders</button>') : '';
   function seg(id, label){ return '<button data-act="filter" data-id="'+id+'" aria-pressed="'+(S.filter===id)+'">'+label+'</button>'; }
-  return '<div class="page"><div class="bar"><div class="seg">'+seg('pending','Pending ('+pending().length+')')+seg('done','Done ('+nDone+')')+seg('all','All')+'</div><span class="sp"></span>'+clear+'</div>'
+  return '<div class="page"><div class="bar"><div class="seg">'+seg('pending','Waiting ('+waiting().length+')')+seg('done','Delivered ('+nDone+')')+seg('all','All')+'</div><span class="sp"></span>'+clear+'</div>'
     + (cards ? '<div class="orders">'+cards+'</div>' : '<div class="empty">Nothing here.</div>') + '</div>';
 }
 
 function totals(){
   var map = {}, order = [];
-  pending().forEach(function(o){ o.lines.forEach(function(l){
+  toEnter().forEach(function(o){ o.lines.forEach(function(l){
     var k = l.cat+'|'+l.name+'|'+(l.size||'');
     if (!map[k]) map[k] = {cat:l.cat, name:l.name, size:l.size, qty:0};
     map[k].qty += l.qty;
@@ -520,16 +525,16 @@ function totals(){
 }
 
 function vTotals(){
-  var g = totals(), n = pending().length;
-  if (!n) return '<div class="page"><div class="empty">All orders are in the system.<br>Nothing left to enter.</div></div>';
+  var g = totals(), n = toEnter().length;
+  if (!n) return '<div class="page"><div class="empty">Everything is entered in the main system.<br>Nothing left to enter.</div></div>';
   var html = g.map(function(x){
     return '<section class="group"><h3>'+esc(x.cat)+'</h3>'
       + x.rows.map(function(r){ return '<div class="row"><span>'+(r.size?'<span class="size">'+esc(r.size)+'</span>':'')+esc(r.name)+'</span><span class="n">'+r.qty+'</span></div>'; }).join('')
       + '</section>';
   }).join('');
-  var amt = pending().reduce(function(a,o){ return a + totalAmt(o.lines); }, 0);
-  return '<div class="page"><div class="bar"><div><b style="font-size:19px">'+n+' pending '+(n===1?'order':'orders')+' · AED '+money(amt)+'</b><div style="color:var(--muted);font-size:14px">Enter these in the main system, then mark them done.</div></div><span class="sp"></span>'
-    + '<button class="btn ghost sm" data-act="copy">Copy list</button><button class="btn good sm" data-act="doneall">Mark all done</button></div>'+html+'</div>';
+  var amt = toEnter().reduce(function(a,o){ return a + totalAmt(o.lines); }, 0);
+  return '<div class="page"><div class="bar"><div><b style="font-size:19px">'+n+' to enter '+(n===1?'order':'orders')+' · AED '+money(amt)+'</b><div style="color:var(--muted);font-size:14px">Enter these in the main system, then tap Mark all entered. (Delivery to the customer is marked in the Orders tab.)</div></div><span class="sp"></span>'
+    + '<button class="btn ghost sm" data-act="copy">Copy list</button><button class="btn good sm" data-act="doneall">Mark all entered</button></div>'+html+'</div>';
 }
 
 /* Menu editor */
@@ -786,18 +791,20 @@ document.addEventListener('click', function(e){
       }
       if (db.day !== today()){ db.day = today(); db.counter = 0; }
       db.counter++;
-      var no0 = {id:uuid(), no:db.counter, dev:sync.dev || '', t:Date.now(), lines:S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }), note:S.note.trim(), done:false};
+      var no0 = {id:uuid(), no:db.counter, dev:sync.dev || '', t:Date.now(), lines:S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }), note:S.note.trim(), delivered:false, entered:false};
       db.orders.push(no0); saveOrders(); queueEvent('order', {id:no0.id, no:no0.no, dev:no0.dev, day:today(), t:no0.t, lines:no0.lines, note:no0.note});
       toast('Order #' + orderLabel(no0) + ' saved'); if (ui.autoslip) S.slip = no0.id;
       S.cart = []; S.note = ''; S.review = false; S.cat = menu[0].id;
       break;
     case 'filter': S.filter = d.id; S.clearAsk = false; break;
     case 'done': case 'undo':
-      db.orders.forEach(function(o){ if (String(o.id) === d.no){ o.done = (a === 'done'); if (isUuid(o.id)) queueEvent('order_done', {id:o.id, done:o.done}); } }); saveOrders(); break;
-    case 'doneall': pending().forEach(function(o){ o.done = true; if (isUuid(o.id)) queueEvent('order_done', {id:o.id, done:true}); }); saveOrders(); toast('All marked done'); break;
+      db.orders.forEach(function(o){ if (String(o.id) === d.no){ o.delivered = (a === 'done'); if (isUuid(o.id)) queueEvent('order_delivered', {id:o.id, delivered:o.delivered}); } }); saveOrders(); break;
+    case 'toggleentered':
+      db.orders.forEach(function(o){ if (String(o.id) === d.no){ o.entered = !o.entered; if (isUuid(o.id)) queueEvent('order_entered', {id:o.id, entered:o.entered}); } }); saveOrders(); break;
+    case 'doneall': toEnter().forEach(function(o){ o.entered = true; if (isUuid(o.id)) queueEvent('order_entered', {id:o.id, entered:true}); }); saveOrders(); toast('All marked entered'); break;
     case 'clearask': S.clearAsk = true; break;
     case 'clearno': S.clearAsk = false; break;
-    case 'clearyes': db.orders = db.orders.filter(function(o){ return !o.done; }); S.clearAsk = false; saveOrders(); break;
+    case 'clearyes': db.orders = db.orders.filter(function(o){ return !(o.delivered && o.entered); }); S.clearAsk = false; saveOrders(); break;
     case 'copy':
       try { navigator.clipboard.writeText(summaryText()).then(function(){ toast('List copied'); }, function(){ toast('Copy not allowed here'); }); }
       catch(err){ toast('Copy not allowed here'); }
@@ -953,13 +960,17 @@ function applyRemote(events){
   events.forEach(function(e){
     var p = e.payload || {}, o = db.orders.filter(function(x){ return String(x.id) === String(p.id); })[0];
     if (e.type === 'order'){
-      if (!o && isUuid(p.id)){ db.orders.push({id:p.id, no:p.no, dev:p.dev || '', t:p.t || e.t, lines:p.lines || [], note:p.note || '', done:false, remote:true}); changed = true; }
+      if (!o && isUuid(p.id)){ db.orders.push({id:p.id, no:p.no, dev:p.dev || '', t:p.t || e.t, lines:p.lines || [], note:p.note || '', delivered:false, entered:false, remote:true}); changed = true; }
     } else if (e.type === 'order_update'){
       if (o){ o.lines = p.lines || o.lines; o.note = p.note || ''; changed = true; }
     } else if (e.type === 'order_cancel'){
       if (o){ db.orders = db.orders.filter(function(x){ return x !== o; }); changed = true; }
     } else if (e.type === 'order_done'){
-      if (o){ o.done = p.done !== false; changed = true; }
+      if (o){ o.delivered = o.entered = p.done !== false; changed = true; }
+    } else if (e.type === 'order_delivered'){
+      if (o){ o.delivered = p.delivered !== false; changed = true; }
+    } else if (e.type === 'order_entered'){
+      if (o){ o.entered = p.entered !== false; changed = true; }
     }
   });
   if (changed) saveOrders();
