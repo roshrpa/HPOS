@@ -612,6 +612,7 @@ function slipHtml(o){
 }
 
 function vSheets(){
+  if (S.exitAsk) return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Exit"><h3>Exit the app?</h3><p>Any order in progress is kept, but the app will close.</p><div class="btns"><button class="btn ghost" data-act="exitno">Stay</button><button class="btn primary" data-act="exityes">Exit</button></div></div></div>';
   if (S.slip){ var so = byId(db.orders, S.slip); if (so) return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Order slip"><h3>Print slip</h3>'+slipHtml(so)+'<div class="btns" style="margin-top:12px"><button class="btn ghost" data-act="slipclose">Close</button><button class="btn primary" data-act="slipprint">Print</button></div></div></div>'; S.slip = null; }
   if (S.sheet){
     var c = byId(menu, S.sheet.cat), item = c && byId(c.items, S.sheet.item);
@@ -768,6 +769,8 @@ document.addEventListener('click', function(e){
     case 'inc': S.cart[+d.i].qty++; break;
     case 'dec': S.cart[+d.i].qty--; if (S.cart[+d.i].qty <= 0) S.cart.splice(+d.i, 1); break;
     case 'clear': S.editing = null; S.cart = []; S.note = ''; S.cartOpen = false; break;
+    case 'exitno': S.exitAsk = false; break;
+    case 'exityes': try { window.Capacitor.Plugins.App.exitApp(); } catch(e){} return;
     case 'slip': S.slip = d.no; break;
     case 'slipclose': S.slip = null; break;
     case 'slipprint': window.print(); return;
@@ -990,6 +993,23 @@ function goCat(n, dir){
 S.cat = menu[0].id; S.edCat = menu[0].id;
 render();
 kickSync();
+/* Android back button: close what is open, go back to New order, and only then ask before exiting */
+(function(){
+  try {
+    var A = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+    if (!A || !A.addListener) return;
+    A.addListener('backButton', function(){
+      if (S.exitAsk){ S.exitAsk = false; }
+      else if (S.slip){ S.slip = null; }
+      else if (S.sheet){ S.sheet = null; }
+      else if (S.review){ S.review = false; }
+      else if (S.cartOpen){ S.cartOpen = false; }
+      else if (S.tab !== 'new'){ S.tab = 'new'; }
+      else { S.exitAsk = true; }
+      render();
+    });
+  } catch(e){}
+})();
 </script>
 </body>
 </html>
