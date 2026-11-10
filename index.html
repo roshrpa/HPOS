@@ -993,7 +993,7 @@ document.addEventListener('click', function(e){
     case 'editord':
       if (S.cart.length && !S.editing){ toast('Finish or clear the current order first'); S.tab = 'new'; break; }
       var eo = byId(db.orders, +d.no) || db.orders.filter(function(o){ return String(o.id) === d.no; })[0];
-      if (eo){ S.cart = eo.lines.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }); S.note = eo.note || ''; S.pay = eo.pay || ''; S.editing = eo.id; S.tab = 'new'; S.cartOpen = true; }
+      if (eo){ S.cart = eo.lines.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }); S.note = eo.note || ''; S.pay = eo.pay || ''; S.editing = eo.id; S.tab = 'new'; S.cartOpen = false; S.cat = (menu.filter(function(m){ return m.name === eo.lines[0].cat; })[0] || menu[0]).id; }
       break;
     case 'canceledit': S.cart = []; S.note = ''; S.editing = null; S.cartOpen = false; break;
     case 'cancelask': S.cancelAsk = d.no; S.cancelText = ''; break;
