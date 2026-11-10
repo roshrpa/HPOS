@@ -677,7 +677,7 @@ function vOrders(){
       + '<div class="act"><div class="tools">' + tool('slip', o.id, IC.print, 'Print') + (o.delivered
         ? tool('undo', o.id, IC.back, 'Back to waiting') + '</div>'
         : tool('editord', o.id, IC.edit, 'Edit') + tool('cancelask', o.id, IC.x, 'Cancel', ' neg') + '</div>'
-          + '<button class="btn good main" data-act="done" data-no="'+o.id+'">'+IC.ok+'Mark delivered</button>') + '</div></article>';
+          + '<button class="btn good main" data-act="done" data-no="'+o.id+'">'+IC.ok+'Order completed</button>') + '</div></article>';
   }).join('');
   function seg(id, label){ return '<button data-act="filter" data-id="'+id+'" aria-pressed="'+(S.filter===id)+'">'+label+'</button>'; }
   return '<div class="page"><div class="bar"><div class="seg">'+seg('pending','Waiting ('+waiting().length+')')+seg('done','Delivered ('+nDone+')')+(nCanc ? seg('cancel','Cancelled ('+nCanc+')') : '')+seg('all','All')+'</div></div>'
