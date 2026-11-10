@@ -725,7 +725,7 @@ function vBills(){
       + '<div class="act"><button class="btn good main" data-act="enterone" data-no="'+o.id+'">'+IC.ok+'Mark entered</button></div></article>';
   }).join('');
   return '<div class="page"><div class="bar"><div><b style="font-size:19px">'+n+' to enter \u00b7 AED '+money(amt)+'</b><div style="color:var(--muted);font-size:14px">Enter each bill in the main system, then tap Mark entered.</div></div><span class="sp"></span>'
-    + '<div class="tbar"><div class="seg"><button data-act="enterview" data-id="bills" aria-pressed="true">Bills</button><button data-act="enterview" data-id="totals" aria-pressed="false">Totals</button></div><button class="tb ok" data-act="doneall">'+IC.ok+'All entered</button></div></div><div class="orders">'+cards+'</div></div>';
+    + '<div class="tbar"><div class="seg"><button data-act="enterview" data-id="bills" aria-pressed="true">Bills</button><button data-act="enterview" data-id="totals" aria-pressed="false">Totals</button></div></div></div><div class="orders">'+cards+'</div></div>';
 }
 
 function vTotals(){
@@ -738,8 +738,8 @@ function vTotals(){
       + '</section>';
   }).join('');
   var amt = toEnter().reduce(function(a,o){ return a + totalAmt(o.lines); }, 0);
-  return '<div class="page"><div class="bar"><div><b style="font-size:19px">'+n+' to enter '+(n===1?'order':'orders')+' · AED '+money(amt)+'</b><div style="color:var(--muted);font-size:14px">Enter these in the main system, then tap Mark all entered. (Delivery to the customer is marked in the Orders tab.)</div></div><span class="sp"></span>'
-    + '<div class="tbar"><div class="seg"><button data-act="enterview" data-id="bills" aria-pressed="false">Bills</button><button data-act="enterview" data-id="totals" aria-pressed="true">Totals</button></div><button class="tb" data-act="copy">'+IC.copy+'Copy list</button><button class="tb ok" data-act="doneall">'+IC.ok+'All entered</button></div></div>'+html+'</div>';
+  return '<div class="page"><div class="bar"><div><b style="font-size:19px">'+n+' to enter '+(n===1?'order':'orders')+' · AED '+money(amt)+'</b><div style="color:var(--muted);font-size:14px">Enter these in the main system, then go to Bills and tap Mark entered on each bill.</div></div><span class="sp"></span>'
+    + '<div class="tbar"><div class="seg"><button data-act="enterview" data-id="bills" aria-pressed="false">Bills</button><button data-act="enterview" data-id="totals" aria-pressed="true">Totals</button></div><button class="tb" data-act="copy">'+IC.copy+'Copy list</button></div></div>'+html+'</div>';
 }
 
 /* Menu editor */
@@ -1052,7 +1052,6 @@ document.addEventListener('click', function(e){
       db.orders.forEach(function(o){ if (String(o.id) === d.no){ o.delivered = (a === 'done'); if (isUuid(o.id)) queueEvent('order_delivered', {id:o.id, delivered:o.delivered}); } }); saveOrders(); break;
     case 'toggleentered':
       db.orders.forEach(function(o){ if (String(o.id) === d.no){ o.entered = !o.entered; if (isUuid(o.id)) queueEvent('order_entered', {id:o.id, entered:o.entered}); } }); saveOrders(); break;
-    case 'doneall': toEnter().forEach(function(o){ o.entered = true; if (isUuid(o.id)) queueEvent('order_entered', {id:o.id, entered:true}); }); saveOrders(); toast('All marked entered'); break;
     case 'setpay': S.pay = d.v; break;
     case 'cyclepay':
       db.orders.forEach(function(o){ if (String(o.id) === d.no){ o.pay = o.pay === 'cash' ? 'card' : o.pay === 'card' ? '' : 'cash'; if (isUuid(o.id)) queueEvent('order_pay', {id:o.id, pay:o.pay}); } }); saveOrders(); break;
