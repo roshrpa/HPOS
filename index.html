@@ -306,6 +306,23 @@ nav.tabs button.navbtn span{font-size:14px}
 .drawer .ditem[aria-current="true"]{background:var(--pink);color:#fff}
 .drawer .ditem i{font-style:normal;font-size:22px;width:28px;text-align:center}
 .drawer .dsoon{margin:10px 6px 0;color:var(--muted);font-size:13px}
+.rhead{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.rseg{width:100%}.rseg button{flex:1}
+.rnav{display:flex;gap:8px;align-items:stretch}
+.rb{width:48px;min-height:48px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--line);font-size:14px;color:var(--muted);display:flex;align-items:center;justify-content:center;flex:none}
+.rb svg{width:20px;height:20px}
+.rdate{flex:1;min-height:48px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--line);font-weight:700;font-size:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15}
+.rdate small{font-size:11px;font-weight:500;color:var(--muted)}
+.hero{background:linear-gradient(135deg,var(--pink),var(--pink-dk));color:#fff;border-radius:20px;padding:16px 18px;margin-bottom:10px;box-shadow:0 2px 8px rgba(223,61,138,.3)}
+.hero small{display:block;font-size:13px;font-weight:600;opacity:.9}
+.hero>b{display:block;font-size:38px;line-height:1.1;margin:2px 0 8px;font-variant-numeric:tabular-nums}.hero>b i{font-style:normal;font-size:15px;font-weight:600;opacity:.85}
+.hsub{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;opacity:.95}.hsub b{font-weight:700}
+.pays{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.pay{background:#fff;border-radius:14px;padding:10px 12px;box-shadow:0 1px 3px rgba(28,26,31,.1)}
+.pay small{display:block;color:var(--muted);font-size:12px;font-weight:600}.pay b{display:block;font-size:20px;line-height:1.25;font-variant-numeric:tabular-nums}.pay em{font-style:normal;font-size:12px;color:var(--muted)}
+.progs{display:flex;flex-direction:column;gap:12px}
+.prog .pl{display:flex;justify-content:space-between;font-size:14px;margin-bottom:5px}.prog .pl b{font-weight:700}
+.prog .pt{height:8px;border-radius:99px;background:#efe6eb;overflow:hidden}.prog .pt i{display:block;height:100%;border-radius:99px;background:var(--done)}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
 .kpi{background:#fff;border-radius:16px;padding:14px;box-shadow:0 1px 3px rgba(28,26,31,.1)}
 .kpi small{display:block;color:var(--muted);font-size:13px;font-weight:600}
@@ -573,10 +590,14 @@ function vReports(){
   var first = 24, last = -1; r.hours.forEach(function(h, i){ if (h){ if (i < first) first = i; if (i > last) last = i; } });
   var bars = '', labs = '';
   if (last >= 0){ for (var h = first; h <= last; h++){ bars += '<div style="height:'+Math.round(r.hours[h] / mx * 100)+'%" title="'+r.hours[h]+'"></div>'; labs += '<span>'+h+'</span>'; } }
-  return '<div class="page"><div class="bar"><div class="seg"><button data-act="repday" data-v="-1" aria-label="Previous day">\u25c0</button><button data-act="repday" data-v="0" aria-pressed="'+(day===today())+'">'+(day===today() ? 'Today' : day)+(span > 1 ? ' (last '+span+' days)' : '')+'</button><button data-act="repday" data-v="1" aria-label="Next day">\u25b6</button></div>'
-    + '<div class="seg"><button data-act="repspan" data-v="1" aria-pressed="'+(span===1)+'">Day</button><button data-act="repspan" data-v="7" aria-pressed="'+(span===7)+'">7 days</button><button data-act="repspan" data-v="30" aria-pressed="'+(span===30)+'">30 days</button></div><span class="sp"></span><button class="tb" data-act="copyrep">'+IC.copy+'Copy report</button></div>'
-    + (n ? '<div class="kpis"><div class="kpi"><small>Orders</small><b>'+n+'</b></div><div class="kpi"><small>Items</small><b>'+r.qty+'</b></div><div class="kpi"><small>Sales (AED)</small><b>'+money(r.amt)+'</b></div><div class="kpi"><small>Cash (AED)</small><b>'+money(r.pay.cash.a)+'</b><small>'+r.pay.cash.n+' orders</small></div><div class="kpi"><small>Card (AED)</small><b>'+money(r.pay.card.a)+'</b><small>'+r.pay.card.n+' orders</small></div><div class="kpi"><small>Unpaid (AED)</small><b>'+money(r.pay.unpaid.a)+'</b><small>'+r.pay.unpaid.n+' orders</small></div><div class="kpi"><small>Average order</small><b>'+money(r.amt / n)+'</b></div>'
-        + '<div class="kpi"><small>Delivered</small><b>'+r.delivered+' / '+n+'</b></div><div class="kpi"><small>Entered in main system</small><b>'+r.entered+' / '+n+'</b></div></div>'
+  var dlab = day === today() ? 'Today' : new Date(day + 'T12:00:00').toLocaleDateString([], {weekday:'short', day:'numeric', month:'short'});
+  function bar(label, v, tot){ var pc = tot ? Math.round(v / tot * 100) : 0; return '<div class="prog"><div class="pl"><span>'+label+'</span><b>'+v+' of '+tot+'</b></div><div class="pt"><i style="width:'+pc+'%"></i></div></div>'; }
+  function pay(label, x){ return '<div class="pay"><small>'+label+'</small><b>'+money(x.a)+'</b><em>'+x.n+(x.n === 1 ? ' order' : ' orders')+'</em></div>'; }
+  return '<div class="page"><div class="rhead"><div class="seg rseg"><button data-act="repspan" data-v="1" aria-pressed="'+(span===1)+'">Day</button><button data-act="repspan" data-v="7" aria-pressed="'+(span===7)+'">7 days</button><button data-act="repspan" data-v="30" aria-pressed="'+(span===30)+'">30 days</button></div>'
+    + '<div class="rnav"><button class="rb" data-act="repday" data-v="-1" aria-label="Previous day">◀</button><button class="rdate" data-act="repday" data-v="0">'+dlab+(span > 1 ? '<small>last '+span+' days up to this date</small>' : '')+'</button><button class="rb" data-act="repday" data-v="1" aria-label="Next day">▶</button><button class="rb" data-act="copyrep" aria-label="Copy report">'+IC.copy+'</button></div></div>'
+    + (n ? '<div class="hero"><small>Sales</small><b><i>AED</i> '+money(r.amt)+'</b><div class="hsub"><span><b>'+n+'</b> orders</span><span><b>'+r.qty+'</b> items</span><span>avg <b>'+money(r.amt / n)+'</b></span></div></div>'
+      + '<div class="pays">'+pay('Cash', r.pay.cash)+pay('Card', r.pay.card)+pay('Unpaid', r.pay.unpaid)+'</div>'
+      + '<div class="card progs">'+bar('Delivered', r.delivered, n)+bar('Entered in main system', r.entered, n)+'</div>'
       + (function(){
           var st = sizeTotals(r), cols = [], pref = ['Small','Medium','Regular','Cup','Large'];
           st.forEach(function(x){ x.parts.forEach(function(q){ if (q.z !== 'Qty' && cols.indexOf(q.z) < 0) cols.push(q.z); }); });
