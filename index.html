@@ -453,7 +453,7 @@ var K_ORD='hollywood_orders_v2', K_MENU='hollywood_menu_v2', K_PIN='hollywood_pi
 var mem = {};
 function lsGet(k){ try { var r = localStorage.getItem(k); if (r !== null) return r; } catch(e){} return mem[k] || null; }
 function lsSet(k, v){ mem[k] = v; try { localStorage.setItem(k, v); return true; } catch(e){ return false; } }
-var ui = (function(){ var d = {img:'small', cols:0}; try { var o = JSON.parse(lsGet(K_UI) || '{}'); if (o.img) d.img = o.img; if (o.cols != null) d.cols = +o.cols; d.autoslip = !!o.autoslip; d.printer = !!(o.printer || o.direct); d.catlist = o.catlist !== false; } catch(e){} return d; })();
+var ui = (function(){ var d = {img:'small', cols:0}; try { var o = JSON.parse(lsGet(K_UI) || '{}'); if (o.img) d.img = o.img; if (o.cols != null) d.cols = +o.cols; d.autoslip = !!o.autoslip; d.printer = !!(o.printer || o.direct); d.manual = o.manual !== false; d.catlist = o.catlist !== false; } catch(e){} return d; })();
 ui.shop = (function(){ var d = {name:'Hollywood Ice Creams', addr:'', tel:'056 900 4121 / 07 236 1564', insta:'@hollywoodicecreams_ae', trn:'', vat:false, rate:5}; try { var o = JSON.parse(lsGet(K_UI) || '{}').shop || {}; for (var k in o) d[k] = o[k]; } catch(e){} return d; })();
 function vatOf(total){ var r = +ui.shop.rate || 0; return ui.shop.vat && r > 0 ? total * r / (100 + r) : 0; }
 function saveUi(){ lsSet(K_UI, JSON.stringify(ui)); }
@@ -484,7 +484,8 @@ function byId(arr, id){ return arr.filter(function(a){ return a.id === id; })[0]
 function curCat(){ return byId(menu, S.cat) || menu[0]; }
 function edCat(){ return byId(menu, S.edCat) || menu[0]; }
 function waiting(){ return db.orders.filter(function(o){ return !o.cancelled && !o.delivered; }); }
-function toEnter(){ return db.orders.filter(function(o){ return !o.cancelled && o.delivered && !o.entered; }); }
+function manual(){ return ui.manual !== false; }
+function toEnter(){ if (!manual()) return []; return db.orders.filter(function(o){ return !o.cancelled && o.delivered && !o.entered; }); }
 function cancelledOrders(){ return db.orders.filter(function(o){ return !!o.cancelled; }); }
 function pending(){ return waiting(); }
 (function(){ db.orders.forEach(function(o){ if (o.delivered === undefined){ o.delivered = !!o.done; o.entered = !!o.done; } }); })();
@@ -534,7 +535,7 @@ function railBtn(c, pressed, act){
 function vDrawer(){
   function it(id, ico, label){ return '<button class="ditem" data-act="gopage" data-v="'+id+'" aria-current="'+(S.tab===id)+'"><i>'+ico+'</i>'+label+'</button>'; }
   return '<div class="drawerscrim" data-act="closenav"><div class="drawer" role="dialog" aria-label="Navigation"><img src="'+LOGO_FULL+'" alt="Hollywood Ice Creams" style="width:170px;max-width:70%;margin:6px auto 10px;display:block">'
-    + it('totals','\ud83d\udcdd','To enter in main system'+(toEnter().length ? ' <span class="badge">'+toEnter().length+'</span>' : '')) + it('reports','\ud83d\udcca','Reports') + it('menu','\ud83c\udf66','Edit menu') + it('settings','\u2699\ufe0f','Settings')
+    + (manual() ? it('totals','\ud83d\udcdd','To enter in main system'+(toEnter().length ? ' <span class="badge">'+toEnter().length+'</span>' : '')) : '') + it('reports','\ud83d\udcca','Reports') + it('menu','\ud83c\udf66','Edit menu') + it('settings','\u2699\ufe0f','Settings')
     + '<p class="dsoon" style="margin-top:auto;text-align:center">Hollywood Orders · version '+APP_VERSION+'</p></div></div>';
 }
 
@@ -578,7 +579,7 @@ function reportText(day){
     + '\nCash: AED ' + money(r.pay.cash.a) + ' (' + r.pay.cash.n + ')  Card: AED ' + money(r.pay.card.a) + ' (' + r.pay.card.n + ')  Unpaid: AED ' + money(r.pay.unpaid.a) + ' (' + r.pay.unpaid.n + ')'
     + (r.canc.length ? '\nCancelled: ' + r.canc.length + ' orders, AED ' + money(r.canc.reduce(function(a,o){ return a + totalAmt(o.lines); }, 0)) + r.canc.map(function(o){ return '\n  #' + orderLabel(o) + ' AED ' + money(totalAmt(o.lines)) + ' - ' + o.cancelled.reason; }).join('') : '')
     + '\n\nBy size' + sizeTotals(r).map(function(x){ return '\n  ' + x.cat + ': ' + x.parts.map(function(q){ return q.z + ' ' + q.q; }).join(', '); }).join('')
-    + '\n\nDelivered: ' + r.delivered + '/' + r.os.length + '  Entered in main system: ' + r.entered + '/' + r.os.length + '\n\nBy category'
+    + '\n\nDelivered: ' + r.delivered + '/' + r.os.length + (manual() ? '  Entered in main system: ' + r.entered + '/' + r.os.length : '') + '\n\nBy category'
     + Object.keys(r.cats).map(function(c){
       var m = r.mat[c];
       return '\n\n' + c + ': ' + r.cats[c].q + ' items, AED ' + money(r.cats[c].a) + m.order.map(function(nm){ var it = m.items[nm];
@@ -600,7 +601,7 @@ function vReports(){
     + '<div class="rnav"><button class="rb" data-act="repday" data-v="-1" aria-label="Previous day">◀</button><button class="rdate" data-act="repday" data-v="0">'+dlab+(span > 1 ? '<small>last '+span+' days up to this date</small>' : '')+'</button><button class="rb" data-act="repday" data-v="1" aria-label="Next day">▶</button><button class="rb" data-act="copyrep" aria-label="Copy report">'+IC.copy+'</button></div></div>'
     + (n ? '<div class="hero"><small>Sales</small><b><i>AED</i> '+money(r.amt)+'</b><div class="hsub"><span><b>'+n+'</b> orders</span><span><b>'+r.qty+'</b> items</span><span>avg <b>'+money(r.amt / n)+'</b></span></div></div>'
       + '<div class="pays">'+pay('Cash', r.pay.cash)+pay('Card', r.pay.card)+pay('Unpaid', r.pay.unpaid)+'</div>'
-      + '<div class="card progs">'+bar('Delivered', r.delivered, n)+bar('Entered in main system', r.entered, n)+'</div>'
+      + '<div class="card progs">'+bar('Delivered', r.delivered, n)+(manual() ? bar('Entered in main system', r.entered, n) : '')+'</div>'
       + (function(){
           var st = sizeTotals(r), cols = [], pref = ['Small','Medium','Regular','Cup','Large'];
           st.forEach(function(x){ x.parts.forEach(function(q){ if (q.z !== 'Qty' && cols.indexOf(q.z) < 0) cols.push(q.z); }); });
@@ -642,6 +643,7 @@ function vSettings(){
     + seg('setcols', ui.cols || 0, [[0,'Auto'],[2,'2'],[3,'3'],[4,'4'],[5,'5']]) + '</div>'
     + '<div class="card"><h3>Category list</h3><p class="hint">Tap the category name above the items to open a list of all categories. Swiping left and right still works.</p>'
     + seg('setcatlist', ui.catlist === false ? 0 : 1, [[1,'On'],[0,'Off']]) + '</div>'
+    + '<div class="card"><h3>Enter in main system</h3><p class="hint">'+(manual() ? 'On: completed orders appear in To enter, so you can type them into the other system by hand. Use this while this app runs on its own.' : 'Off: To enter is hidden. Use this when orders reach the main system by themselves.')+'</p>' + seg('setmanual', manual() ? 1 : 0, [[1,'On'],[0,'Off']]) + '</div>'
     + '<div class="card"><h3>Printer</h3><p class="hint">'+(ui.printer ? 'A printer is set up. The order screen shows one button, Confirm &amp; print bill, and the bill goes to the printer as soon as you tap it.' : 'Turn this on once the printer is set up on this tablet. Until then, Confirm order only saves the order.')+'</p>' + seg('setprinter', ui.printer ? 1 : 0, [[0,'No printer'],[1,'Printer is set up']]) + '</div>'
     + '<div class="card"><h3>Shop details</h3><p class="hint">Shown on every printed slip.</p><div class="shopf">'
     + sf('Shop name','name') + sf('Address','addr') + sf('Phone','tel') + sf('Instagram','insta') + '</div></div>'
@@ -1055,6 +1057,7 @@ document.addEventListener('click', function(e){
     case 'slipclose': S.slip = null; break;
     case 'slipprint': window.print(); return;
     case 'setvat': ui.shop.vat = d.v === '1'; saveUi(); break;
+    case 'setmanual': ui.manual = d.v === '1'; saveUi(); if (!ui.manual && S.tab === 'totals') S.tab = 'orders'; break;
     case 'setprinter': ui.printer = d.v === '1'; saveUi(); break;
     case 'review': if (S.cart.length){ S.review = true; if (!S.editing && S.pay === undefined) S.pay = ui.lastPay === undefined ? 'cash' : ui.lastPay; } S.cartOpen = false; break;
     case 'back': S.review = false; S.revSize = null; break;
