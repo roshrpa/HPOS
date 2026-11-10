@@ -464,7 +464,7 @@ function byId(arr, id){ return arr.filter(function(a){ return a.id === id; })[0]
 function curCat(){ return byId(menu, S.cat) || menu[0]; }
 function edCat(){ return byId(menu, S.edCat) || menu[0]; }
 function waiting(){ return db.orders.filter(function(o){ return !o.cancelled && !o.delivered; }); }
-function toEnter(){ return db.orders.filter(function(o){ return !o.cancelled && !o.entered; }); }
+function toEnter(){ return db.orders.filter(function(o){ return !o.cancelled && o.delivered && !o.entered; }); }
 function cancelledOrders(){ return db.orders.filter(function(o){ return !!o.cancelled; }); }
 function pending(){ return waiting(); }
 (function(){ db.orders.forEach(function(o){ if (o.delivered === undefined){ o.delivered = !!o.done; o.entered = !!o.done; } }); })();
@@ -732,7 +732,7 @@ function vBills(){
 function vTotals(){
   var g = totals(), n = toEnter().length;
   if (n && S.enterView !== 'totals') return vBills();
-  if (!n) return '<div class="page"><div class="empty">Everything is entered in the main system.<br>Nothing left to enter.</div></div>';
+  if (!n) return '<div class="page"><div class="empty">Nothing to enter.<br>Completed orders appear here.</div></div>';
   var html = g.map(function(x){
     return '<section class="group"><h3>'+esc(x.cat)+'</h3>'
       + x.rows.map(function(r){ return '<div class="row"><span>'+(r.size?'<span class="size">'+esc(r.size)+'</span>':'')+esc(r.name)+'</span><span class="n">'+r.qty+'</span></div>'; }).join('')
