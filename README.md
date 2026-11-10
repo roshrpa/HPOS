@@ -18,4 +18,4 @@ On the tablet, allow "Install unknown apps" for the browser, open the file and i
 
 ## POS (sample)
 
-The counter POS and the PostgreSQL server now live in the separate repository **HPOS_WEB** (https://github.com/roshrpa/HPOS_WEB, live at https://roshrpa.github.io/HPOS_WEB/). `pos/index.html` here is only a redirect for old links.
+The counter POS and the PostgreSQL server now live in the separate repository **HPOS_WEB** (https://github.com/roshrpa/HPOS_WEB, live at https://roshrpa.github.io/HPOS_WEB/).
