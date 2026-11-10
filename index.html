@@ -616,8 +616,6 @@ function vSettings(){
     + seg('setcols', ui.cols || 0, [[0,'Auto'],[2,'2'],[3,'3'],[4,'4'],[5,'5']]) + '</div>'
     + '<div class="card"><h3>Category list</h3><p class="hint">Tap the category name above the items to open a list of all categories. Swiping left and right still works.</p>'
     + seg('setcatlist', ui.catlist === false ? 0 : 1, [[1,'On'],[0,'Off']]) + '</div>'
-    + '<div class="card"><h3>Print slip</h3><p class="hint">Open the print slip automatically after you confirm an order.</p>'
-    + seg('setauto', ui.autoslip ? 1 : 0, [[0,'Off'],[1,'On']]).replace(/data-v="1"/,'data-v="1"').replace(/data-act="setauto" data-v="(\d)"/g,'data-act="setauto" data-v="$1"') + '</div>'
     + '<div class="card"><h3>Printer</h3><p class="hint">'+(ui.printer ? 'A printer is set up. The order screen shows one button, Confirm &amp; print bill, and the bill goes to the printer as soon as you tap it.' : 'Turn this on once the printer is set up on this tablet. Until then, Confirm order only saves the order.')+'</p>' + seg('setprinter', ui.printer ? 1 : 0, [[0,'No printer'],[1,'Printer is set up']]) + '</div>'
     + '<div class="card"><h3>Shop details</h3><p class="hint">Shown on every printed slip.</p><div class="shopf">'
     + sf('Shop name','name') + sf('Address','addr') + sf('Phone','tel') + sf('Instagram','insta') + '</div></div>'
@@ -1032,7 +1030,6 @@ document.addEventListener('click', function(e){
     case 'slipprint': window.print(); return;
     case 'setvat': ui.shop.vat = d.v === '1'; saveUi(); break;
     case 'setprinter': ui.printer = d.v === '1'; saveUi(); break;
-    case 'setauto': ui.autoslip = d.v === '1'; saveUi(); break;
     case 'review': if (S.cart.length){ S.review = true; if (!S.editing && S.pay === undefined) S.pay = ui.lastPay === undefined ? 'cash' : ui.lastPay; } S.cartOpen = false; break;
     case 'back': S.review = false; S.revSize = null; break;
     case 'place':
@@ -1046,7 +1043,7 @@ document.addEventListener('click', function(e){
       db.counter++;
       var no0 = {id:uuid(), no:db.counter, dev:sync.dev || '', t:Date.now(), lines:S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }), note:S.note.trim(), pay:S.pay || '', delivered:false, entered:false};
       db.orders.push(no0); saveOrders(); ui.lastPay = no0.pay; saveUi(); queueEvent('order', {id:no0.id, no:no0.no, dev:no0.dev, day:today(), t:no0.t, lines:no0.lines, note:no0.note, pay:no0.pay});
-      toast('Order #' + orderLabel(no0) + ' saved'); if (d.pr){ S.slip = no0.id; S.autoPrint = !!ui.printer; } else if (ui.autoslip){ S.slip = no0.id; }
+      toast('Order #' + orderLabel(no0) + ' saved'); if (d.pr){ S.slip = no0.id; S.autoPrint = !!ui.printer; }
       S.cart = []; S.note = ''; S.pay = undefined; S.review = false; S.cat = menu[0].id;
       break;
     case 'filter': S.filter = d.id; S.clearAsk = false; break;
