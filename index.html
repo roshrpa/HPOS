@@ -651,7 +651,7 @@ function vNew(){
   }).join('') : '<div class="empty">No items yet.<br>Tap an item to add it.</div>';
   return '<div class="new"><nav class="rail" aria-label="Categories">'+rail+'</nav>'
     + '<section class="menu"><h2>'+(ui.catlist !== false ? '<button class="cathead" data-act="opencats" aria-label="All categories">'+esc(c.name)+(c.ar ? '<span class="ar">'+esc(c.ar)+'</span>' : '')+'<span class="chev">\u25be All</span></button>' : esc(c.name)+(c.ar ? '<span class="ar">'+esc(c.ar)+'</span>' : ''))+'</h2><div class="items">'+items+'</div></section>'
-    + '<aside class="panel'+(S.cartOpen?' open':'')+'"><h2 data-act="togglecart">Order #'+(S.editing ? '' : (sync.dev ? sync.dev + '-' : ''))+curNo()+'<small>'+totalQty(S.cart)+' items</small></h2>'+(S.editing ? '<div class="editing">Editing a saved order</div>' : '')+'<div class="lines">'+lines+'</div>'
+    + '<aside class="panel'+(S.cartOpen?' open':'')+'"><h2 data-act="togglecart">Order #'+(S.editing ? '' : (sync.dev ? sync.dev + '-' : ''))+curNo()+'<small>'+totalQty(S.cart)+' items</small></h2>'+'<div class="lines">'+lines+'</div>'
     + '<div class="foot"><div class="tot"><span>Total</span><span>AED '+money(totalAmt(S.cart))+'</span></div>'
     + '<input id="note" class="inp" type="text" placeholder="Car / note (optional)" value="'+esc(S.note)+'" autocomplete="off">'
     + '<button class="btn primary" data-act="review"'+(S.cart.length?'':' disabled')+'>'+(S.editing ? 'Review changes' : 'Review order')+'</button>'
@@ -676,7 +676,7 @@ function vOrders(){
         + '<ul>'+li+'</ul><div class="why"><b>Reason:</b> '+esc(o.cancelled.reason)+'<small>'+new Date(o.cancelled.t).toLocaleString([], {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'})+'</small></div>'
         + '<div class="sum"><span>Total (not counted)</span><span>AED '+money(totalAmt(o.lines))+'</span></div></article>';
     }
-    return head + '<article class="ord'+(o.delivered?' done':'')+'"><div class="hd"><span class="no">#'+orderLabel(o)+'</span><span class="pill '+(o.delivered?'d':'p')+'">'+(o.delivered?'Delivered':'Waiting')+'</span><button class="chip'+(o.entered?' on':'')+'" data-act="toggleentered" data-no="'+o.id+'">'+(o.entered?'Entered \u2713':'Not entered')+'</button><button class="chip pay'+(o.pay?'':' unpaid')+'" data-act="cyclepay" data-no="'+o.id+'">'+(o.pay === 'cash' ? 'Cash' : o.pay === 'card' ? 'Card' : 'Unpaid')+'</button><span class="meta">'+when+'</span></div>'
+    return head + '<article class="ord'+(o.delivered?' done':'')+'"><div class="hd"><span class="no">#'+orderLabel(o)+'</span><span class="pill '+(o.delivered?'d':'p')+'">'+(o.delivered?'Delivered':'Waiting')+'</span><button class="chip pay'+(o.pay?'':' unpaid')+'" data-act="cyclepay" data-no="'+o.id+'">'+(o.pay === 'cash' ? 'Cash' : o.pay === 'card' ? 'Card' : 'Unpaid')+'</button><span class="meta">'+when+'</span></div>'
       + '<ul>'+li+'</ul>' + (o.note ? '<div class="note">'+esc(o.note)+'</div>' : '')
       + '<div class="sum"><span>Total</span><span>AED '+money(totalAmt(o.lines))+'</span></div>'
       + '<div class="act"><div class="tools">' + tool('slip', o.id, IC.print, 'Print') + (o.delivered
