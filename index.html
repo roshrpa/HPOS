@@ -182,7 +182,8 @@ main{flex:1;min-height:0;display:flex}
 .rev li em{margin-right:6px}
 .rev li .szb{padding:6px 0;min-height:40px;vertical-align:middle}
 .rev li.rsz{gap:8px;padding:0 0 10px}.rev li.rsz button{flex:1;min-height:52px;border-radius:14px;background:var(--sage);border:2px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:15px;line-height:1.2}.rev li.rsz button small{font-size:12px;color:var(--muted);font-weight:500}.rev li.rsz button[aria-pressed="true"]{border-color:var(--plum);background:#fff}
-.rev li .amt{flex:none;min-width:44px;text-align:right;margin-left:auto;font-size:16px}
+.rev li .amt small{display:block;font-size:10px;font-weight:600;letter-spacing:.5px;color:var(--muted);line-height:1}
+.rev li .amt{line-height:1.15;flex:none;min-width:58px;text-align:right;margin-left:6px;font-size:19px;font-weight:700;color:var(--pink-dk);font-variant-numeric:tabular-nums}
 .btns{display:flex;gap:10px;margin-top:14px}
 .btns .btn{flex:1}
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 22px;border-radius:99px;font-weight:600;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
@@ -859,7 +860,7 @@ function vSheets(){
         var sc = menu.filter(function(m){ return m.name === l.cat; })[0], si = sc && sc.items.filter(function(x){ return x.name === l.name; })[0];
         var can = !!(l.size && si && sc.sizes && sc.sizes.length > 1);
         var pickRow = can && S.revSize === ci ? '<li class="rsz">'+sc.sizes.map(function(z){ return '<button data-act="setsize" data-i="'+ci+'" data-z="'+z.id+'" aria-pressed="'+(z.label === l.size)+'"><b>'+esc(z.label)+'</b><small>AED '+money(priceOf(si, z))+'</small></button>'; }).join('')+'</li>' : '';
-        return '<li'+(pickRow?' style="border-bottom:0"':'')+'><span>'+(l.size?(can?'<button class="szb" data-act="revsize" data-i="'+ci+'" aria-expanded="'+(S.revSize === ci)+'" aria-label="Change size, now '+esc(l.size)+'"><em>'+esc(l.size)+' \u25be</em></button> ':'<em>'+esc(l.size)+'</em> '):'')+esc(l.name)+'</span><div class="qty"><button data-act="dec" data-i="'+ci+'" aria-label="Less">\u2212</button><output>'+l.qty+'</output><button data-act="inc" data-i="'+ci+'" aria-label="More">+</button></div><span class="amt">'+money(l.qty * l.price)+'</span></li>' + pickRow;
+        return '<li'+(pickRow?' style="border-bottom:0"':'')+'><span>'+(l.size?(can?'<button class="szb" data-act="revsize" data-i="'+ci+'" aria-expanded="'+(S.revSize === ci)+'" aria-label="Change size, now '+esc(l.size)+'"><em>'+esc(l.size)+' \u25be</em></button> ':'<em>'+esc(l.size)+'</em> '):'')+esc(l.name)+'</span><div class="qty"><button data-act="dec" data-i="'+ci+'" aria-label="Less">\u2212</button><output>'+l.qty+'</output><button data-act="inc" data-i="'+ci+'" aria-label="More">+</button></div><span class="amt"><small>AED</small>'+money(l.qty * l.price)+'</span></li>' + pickRow;
       }).join('');
     }).join('');
     return '<div class="scrim"><div class="sheet revsheet" role="dialog" aria-label="Confirm order"><h3>Order #'+(S.editing ? '' : (sync.dev ? sync.dev + '-' : ''))+curNo()+'</h3><p>Read this back to the customer. '+totalQty(S.cart)+' items.</p>'
