@@ -720,7 +720,7 @@ function vBills(){
     return head + '<article class="ord"><div class="hd"><span class="no">#'+orderLabel(o)+'</span><span class="pill '+(o.delivered?'d':'p')+'">'+(o.delivered?'Delivered':'Waiting')+'</span><span class="meta">'+when+'</span></div>'
       + '<ul>'+li+'</ul>' + (o.note ? '<div class="note">'+esc(o.note)+'</div>' : '')
       + '<div class="sum"><span>Total \u00b7 '+(o.pay === 'cash' ? 'Cash' : o.pay === 'card' ? 'Card' : 'Unpaid')+'</span><span>AED '+money(totalAmt(o.lines))+'</span></div>'
-      + '<div class="act two">'+tool('copyone', o.id, IC.copy, 'Copy')+'<button class="btn good main" data-act="enterone" data-no="'+o.id+'">'+IC.ok+'Mark entered</button></div></article>';
+      + '<div class="act"><button class="btn good main" data-act="enterone" data-no="'+o.id+'">'+IC.ok+'Mark entered</button></div></article>';
   }).join('');
   return '<div class="page"><div class="bar"><div><b style="font-size:19px">'+n+' to enter \u00b7 AED '+money(amt)+'</b><div style="color:var(--muted);font-size:14px">Enter each bill in the main system, then tap Mark entered.</div></div><span class="sp"></span>'
     + '<div class="tbar"><div class="seg"><button data-act="enterview" data-id="bills" aria-pressed="true">Bills</button><button data-act="enterview" data-id="totals" aria-pressed="false">Totals</button></div><button class="tb ok" data-act="doneall">'+IC.ok+'All entered</button></div></div><div class="orders">'+cards+'</div></div>';
