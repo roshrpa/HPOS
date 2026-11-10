@@ -312,6 +312,13 @@ nav.tabs button.navbtn span{font-size:14px}
 .szc small{display:block;color:var(--muted);font-weight:600;font-size:12px}.szc b{font-size:22px}
 .rtab.compact{font-size:14px}.rtab.compact td,.rtab.compact th{padding:7px 4px}
 @media (max-width:700px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:8px}.kpi{padding:8px 10px;border-radius:12px}.kpi b{font-size:19px}.kpi small{font-size:11px}}
+.cathead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;text-align:left;font:inherit;color:inherit;padding:4px 0}
+.cathead .chev{font-size:13px;font-weight:700;background:var(--pink);color:#fff;border-radius:99px;padding:3px 12px;align-self:center}
+.catsheet{max-height:86%}
+.catlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px}
+.catlist .cat{min-height:56px;border-radius:16px;background:#f6eef1;font-size:15px}
+.catlist .cat[aria-pressed="true"]{background:var(--pink);color:#fff}
+.catlist .cat small{display:block;opacity:.7;font-weight:600;font-size:12px}
 </style>
 </head>
 <body>
@@ -402,7 +409,7 @@ var K_ORD='hollywood_orders_v2', K_MENU='hollywood_menu_v2', K_PIN='hollywood_pi
 var mem = {};
 function lsGet(k){ try { var r = localStorage.getItem(k); if (r !== null) return r; } catch(e){} return mem[k] || null; }
 function lsSet(k, v){ mem[k] = v; try { localStorage.setItem(k, v); return true; } catch(e){ return false; } }
-var ui = (function(){ var d = {img:'small', cols:0}; try { var o = JSON.parse(lsGet(K_UI) || '{}'); if (o.img) d.img = o.img; if (o.cols != null) d.cols = +o.cols; d.autoslip = !!o.autoslip; } catch(e){} return d; })();
+var ui = (function(){ var d = {img:'small', cols:0}; try { var o = JSON.parse(lsGet(K_UI) || '{}'); if (o.img) d.img = o.img; if (o.cols != null) d.cols = +o.cols; d.autoslip = !!o.autoslip; d.catlist = o.catlist !== false; } catch(e){} return d; })();
 function saveUi(){ lsSet(K_UI, JSON.stringify(ui)); }
 function lsDel(k){ delete mem[k]; try { localStorage.removeItem(k); } catch(e){} }
 function today(){ return new Date().toLocaleDateString('en-CA'); }
@@ -576,6 +583,8 @@ function vSettings(){
     + seg('setimg', ui.img, [['hide','No pictures'],['small','Small'],['medium','Medium'],['large','Large']]) + '</div>'
     + '<div class="card"><h3>Items per row</h3><p class="hint">How many items show side by side. Auto fits the screen.</p>'
     + seg('setcols', ui.cols || 0, [[0,'Auto'],[2,'2'],[3,'3'],[4,'4'],[5,'5']]) + '</div>'
+    + '<div class="card"><h3>Category list</h3><p class="hint">Tap the category name above the items to open a list of all categories. Swiping left and right still works.</p>'
+    + seg('setcatlist', ui.catlist === false ? 0 : 1, [[1,'On'],[0,'Off']]) + '</div>'
     + '<div class="card"><h3>Print slip</h3><p class="hint">Open the print slip automatically after you confirm an order.</p>'
     + seg('setauto', ui.autoslip ? 1 : 0, [[0,'Off'],[1,'On']]).replace(/data-v="1"/,'data-v="1"').replace(/data-act="setauto" data-v="(\d)"/g,'data-act="setauto" data-v="$1"') + '</div>'
     + '<p class="hint" style="padding:0 6px">These settings are saved on this tablet only.</p></div>';
@@ -605,7 +614,7 @@ function vNew(){
       + '<div class="amt">'+money(l.qty * l.price)+'</div><button class="rm" data-act="rm" data-i="'+i+'" aria-label="Remove">×</button></div>';
   }).join('') : '<div class="empty">No items yet.<br>Tap an item to add it.</div>';
   return '<div class="new"><nav class="rail" aria-label="Categories">'+rail+'</nav>'
-    + '<section class="menu"><h2>'+esc(c.name)+(c.ar ? '<span class="ar">'+esc(c.ar)+'</span>' : '')+'</h2><div class="items">'+items+'</div></section>'
+    + '<section class="menu"><h2>'+(ui.catlist !== false ? '<button class="cathead" data-act="opencats" aria-label="All categories">'+esc(c.name)+(c.ar ? '<span class="ar">'+esc(c.ar)+'</span>' : '')+'<span class="chev">\u25be All</span></button>' : esc(c.name)+(c.ar ? '<span class="ar">'+esc(c.ar)+'</span>' : ''))+'</h2><div class="items">'+items+'</div></section>'
     + '<aside class="panel'+(S.cartOpen?' open':'')+'"><h2 data-act="togglecart">Order #'+(S.editing ? '' : (sync.dev ? sync.dev + '-' : ''))+curNo()+'<small>'+totalQty(S.cart)+' items</small></h2>'+(S.editing ? '<div class="editing">Editing a saved order</div>' : '')+'<div class="lines">'+lines+'</div>'
     + '<div class="foot"><div class="tot"><span>Total</span><span>AED '+money(totalAmt(S.cart))+'</span></div>'
     + '<input id="note" class="inp" type="text" placeholder="Car / note (optional)" value="'+esc(S.note)+'" autocomplete="off">'
@@ -777,6 +786,14 @@ function slipHtml(o){
 }
 
 function vSheets(){
+  if (S.catSheet){
+    var cc = curCat();
+    return '<div class="scrim" data-act="closecats"><div class="sheet catsheet" role="dialog" aria-label="Categories"><h3>Choose category</h3><div class="catlist">'
+      + menu.map(function(m){ var im = src(m.img) || (m.items[0] && src(m.items[0].img)), n = cartCount(m.name);
+          return '<button class="cat" data-act="pickcat" data-id="'+m.id+'" aria-pressed="'+(m.id === cc.id)+'">'+(im ? '<img src="'+esc(im)+'" alt="">' : '<span class="ph"></span>')
+            + '<span>'+esc(m.name)+'<small>'+m.items.length+' items'+(n ? ' \u00b7 '+n+' in order' : '')+'</small></span></button>'; }).join('')
+      + '</div></div></div>';
+  }
   if (S.exitAsk) return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Exit"><h3>Exit the app?</h3><p>Any order in progress is kept, but the app will close.</p><div class="btns"><button class="btn ghost" data-act="exitno">Stay</button><button class="btn primary" data-act="exityes">Exit</button></div></div></div>';
   if (S.slip){ var so = byId(db.orders, S.slip); if (so) return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Order slip"><h3>Print slip</h3>'+slipHtml(so)+'<div class="btns" style="margin-top:12px"><button class="btn ghost" data-act="slipclose">Close</button><button class="btn primary" data-act="slipprint">Print</button></div></div></div>'; S.slip = null; }
   if (S.sheet){
@@ -973,6 +990,13 @@ document.addEventListener('click', function(e){
     case 'setpay': S.pay = d.v; break;
     case 'cyclepay':
       db.orders.forEach(function(o){ if (String(o.id) === d.no){ o.pay = o.pay === 'cash' ? 'card' : o.pay === 'card' ? '' : 'cash'; if (isUuid(o.id)) queueEvent('order_pay', {id:o.id, pay:o.pay}); } }); saveOrders(); break;
+    case 'opencats': S.catSheet = true; break;
+    case 'closecats': if (e && e.target && e.target.closest && e.target.closest('.sheet') && !e.target.closest('[data-act="pickcat"]')) return; S.catSheet = false; break;
+    case 'pickcat':
+      var oi2 = menu.map(function(m){ return m.id; }).indexOf(curCat().id), ni2 = menu.map(function(m){ return m.id; }).indexOf(d.id);
+      if (ni2 !== oi2) S.anim = ni2 > oi2 ? 'l' : 'r';
+      S.cat = d.id; S.catSheet = false; break;
+    case 'setcatlist': ui.catlist = d.v === '1'; saveUi(); break;
     case 'opennav': S.nav = true; break;
     case 'closenav': if (e && e.target && e.target.closest && e.target.closest('.drawer') && !e.target.closest('[data-act="gopage"]')) return; S.nav = false; break;
     case 'gopage': S.nav = false; S.tab = d.v; S.cancelAsk = null; S.clearAsk = false; S.del = null; S.resetAsk = false; if (d.v !== 'menu') S.pinErr = false; break;
@@ -1194,7 +1218,8 @@ kickSync();
     var A = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
     if (!A || !A.addListener) return;
     A.addListener('backButton', function(){
-      if (S.nav){ S.nav = false; }
+      if (S.catSheet){ S.catSheet = false; }
+      else if (S.nav){ S.nav = false; }
       else if (S.exitAsk){ S.exitAsk = false; }
       else if (S.slip){ S.slip = null; }
       else if (S.sheet){ S.sheet = null; }
