@@ -284,6 +284,9 @@ body[data-cols="5"] .items{grid-template-columns:repeat(5,minmax(0,1fr))!importa
 .slipwrap .cat{font-weight:700;margin-top:6px;text-transform:uppercase;font-size:12px;display:block;background:none;min-height:0;padding:0;border-radius:0}
 .slipwrap .sl{display:block;width:150px;margin:0 auto 6px}.slipwrap .sm{font-size:12px}
 .shopf{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.shopf label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+.slipwrap.kot .r.k{font-size:18px;font-weight:700;margin:3px 0}.slipwrap.kot .r.k .q{width:38px}.slipwrap.kot .cat{font-size:13px}
+.btns.pr{margin-top:8px}.btn.soft{background:#f6eef2;color:var(--ink);min-height:48px;font-size:14px;flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:0 10px}.btn.soft svg{color:var(--muted)}
+.btn svg{flex:none}.btns .btn.primary{display:inline-flex;align-items:center;justify-content:center;gap:8px}.revsheet .btns:not(.pr) .btn.ghost{flex:0 0 28%}.revsheet .btns:not(.pr) .btn.primary{flex:1 1 auto;white-space:nowrap}
 .slipwrap .tt{display:flex;justify-content:space-between;font-weight:700;font-size:17px}
 @media print{
   body *{visibility:hidden}
@@ -603,7 +606,7 @@ function vReports(){
 }
 
 var IC = (function(){ function i(d){ return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>'; }
-  return {print:i('<path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 14h10v6H7z"/>'), edit:i('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>'), x:i('<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>'), back:i('<path d="M9 7l-5 5 5 5"/><path d="M4 12h11a5 5 0 0 1 0 10h-2"/>'), ok:i('<path d="M5 12.5l4.5 4.5L19 7.5"/>'), copy:i('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>')}; })();
+  return {print:i('<path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 14h10v6H7z"/>'), edit:i('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>'), x:i('<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>'), back:i('<path d="M9 7l-5 5 5 5"/><path d="M4 12h11a5 5 0 0 1 0 10h-2"/>'), ok:i('<path d="M5 12.5l4.5 4.5L19 7.5"/>'), kot:i('<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>'), copy:i('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>')}; })();
 function tool(act, id, ico, label, cls){ return '<button class="tool'+(cls||'')+'" data-act="'+act+'" data-no="'+id+'">'+ico+'<span>'+label+'</span></button>'; }
 function vSettings(){
   function sf(label, k){ return '<label>'+label+'<input class="inp" data-f="shop" data-k="'+k+'" value="'+esc(ui.shop[k] == null ? '' : ui.shop[k])+'"></label>'; }
@@ -824,6 +827,20 @@ function slipHtml(o){
     + '<div class="hr"></div><div class="c">Thank you!</div>' + (sh.insta ? '<div class="c sm">'+esc(sh.insta)+'</div>' : '') + '</div>';
 }
 
+function kotHtml(o){
+  var d = new Date(o.t), cats = {}, order = [];
+  o.lines.forEach(function(l){ if (!cats[l.cat]){ cats[l.cat] = []; order.push(l.cat); } cats[l.cat].push(l); });
+  var rows = order.map(function(c){
+    return '<span class="cat">'+esc(c)+'</span>' + cats[c].map(function(l){
+      return '<div class="r k"><span class="q">'+l.qty+'x</span><span class="n">'+esc(l.name)+(l.size?' <b>('+esc(l.size)+')</b>':'')+'</span></div>';
+    }).join('');
+  }).join('');
+  return '<div class="slipwrap kot" id="slip"><div class="c" style="font-weight:700">KITCHEN ORDER</div><div class="c big" style="font-size:34px">#'+esc(orderLabel(o))+'</div>'
+    + '<div class="c sm">'+d.toLocaleDateString([], {day:'numeric', month:'short'})+'  '+d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})+'</div>'
+    + (o.note ? '<div class="c" style="margin-top:6px;font-weight:700;font-size:17px">'+esc(o.note)+'</div>' : '')
+    + '<div class="hr"></div>' + rows + '<div class="hr"></div><div class="c sm">'+totalQty(o.lines)+' items</div></div>';
+}
+
 function vSheets(){
   if (S.cancelAsk){ var co = byId(db.orders, S.cancelAsk); if (co){
     var ok = (S.cancelText || '').trim().length >= 3;
@@ -841,7 +858,7 @@ function vSheets(){
       + '</div></div></div>';
   }
   if (S.exitAsk) return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Exit"><h3>Exit the app?</h3><p>Any order in progress is kept, but the app will close.</p><div class="btns"><button class="btn ghost" data-act="exitno">Stay</button><button class="btn primary" data-act="exityes">Exit</button></div></div></div>';
-  if (S.slip){ var so = byId(db.orders, S.slip); if (so) return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Order slip"><h3>Print slip</h3>'+slipHtml(so)+'<div class="btns" style="margin-top:12px"><button class="btn ghost" data-act="slipclose">Close</button><button class="btn primary" data-act="slipprint">Print</button></div></div></div>'; S.slip = null; }
+  if (S.slip){ var so = byId(db.orders, S.slip); if (so){ var kt = S.slipType === 'kot'; return '<div class="scrim"><div class="sheet" role="dialog" aria-label="Print"><div class="seg" style="margin-bottom:10px;width:100%"><button style="flex:1" data-act="sliptype" data-v="bill" aria-pressed="'+!kt+'">Bill</button><button style="flex:1" data-act="sliptype" data-v="kot" aria-pressed="'+kt+'">KOT (kitchen)</button></div>'+(kt ? kotHtml(so) : slipHtml(so))+'<div class="btns" style="margin-top:12px"><button class="btn ghost" data-act="slipclose">Close</button><button class="btn primary" data-act="slipprint">'+IC.print+'Print '+(kt ? 'KOT' : 'bill')+'</button></div></div></div>'; } S.slip = null; }
   if (S.sheet){
     var c = byId(menu, S.sheet.cat), item = c && byId(c.items, S.sheet.item);
     if (c && item) return '<div class="scrim" data-act="closesheet"><div class="sheet" role="dialog" aria-label="Choose size"><h3>'+esc(item.name)+'</h3><p>'+esc(c.name)+' · choose size</p>'
@@ -862,7 +879,8 @@ function vSheets(){
     }).join('');
     return '<div class="scrim"><div class="sheet revsheet" role="dialog" aria-label="Confirm order"><h3>Order #'+(S.editing ? '' : (sync.dev ? sync.dev + '-' : ''))+curNo()+'</h3><p>Read this back to the customer. '+totalQty(S.cart)+' items.</p>'
       + '<ul class="rev">'+li+'</ul><div class="payrow">' + [['cash','Cash'],['card','Card'],['','Pay later']].map(function(x){ return '<button data-act="setpay" data-v="'+x[0]+'" aria-pressed="'+((S.pay||'')===x[0])+'">'+x[1]+'</button>'; }).join('') + '</div><div class="tot"><span>Total</span><span>AED '+money(totalAmt(S.cart))+'</span></div>' + (S.note ? '<p style="color:var(--ink);margin-top:8px">Note: '+esc(S.note)+'</p>' : '')
-      + '<div class="btns"><button class="btn ghost" data-act="back">Edit</button><button class="btn primary" data-act="place">'+(S.editing ? 'Save changes' : 'Confirm order')+'</button></div></div></div>';
+      + '<div class="btns"><button class="btn ghost" data-act="back">Edit</button><button class="btn primary" data-act="place">'+(S.editing ? 'Save changes' : 'Confirm order')+'</button></div>'
+      + '<div class="btns pr"><button class="btn soft" data-act="place" data-pr="bill">'+IC.print+(S.editing ? 'Save & bill' : 'Confirm & bill')+'</button><button class="btn soft" data-act="place" data-pr="kot">'+IC.kot+(S.editing ? 'Save & KOT' : 'Confirm & KOT')+'</button></div></div></div>';
   }
   return '';
 }
@@ -1021,8 +1039,9 @@ document.addEventListener('click', function(e){
     case 'clear': S.editing = null; S.cart = []; S.note = ''; S.cartOpen = false; break;
     case 'exitno': S.exitAsk = false; break;
     case 'exityes': try { window.Capacitor.Plugins.App.exitApp(); } catch(e){} return;
-    case 'slip': S.slip = d.no; break;
-    case 'slipclose': S.slip = null; break;
+    case 'slip': S.slip = d.no; S.slipType = 'bill'; break;
+    case 'sliptype': S.slipType = d.v; break;
+    case 'slipclose': S.slip = null; S.slipType = null; break;
     case 'slipprint': window.print(); return;
     case 'setvat': ui.shop.vat = d.v === '1'; saveUi(); break;
     case 'setauto': ui.autoslip = d.v === '1'; saveUi(); break;
@@ -1031,7 +1050,7 @@ document.addEventListener('click', function(e){
     case 'place':
       if (S.editing){
         var oo = byId(db.orders, S.editing);
-        if (oo){ oo.lines = S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }); oo.note = S.note.trim(); oo.pay = S.pay || ''; saveOrders(); if (isUuid(oo.id)) queueEvent('order_update', {id:oo.id, lines:oo.lines, note:oo.note, pay:oo.pay}); toast('Order #' + orderLabel(oo) + ' updated'); }
+        if (oo){ oo.lines = S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }); oo.note = S.note.trim(); oo.pay = S.pay || ''; saveOrders(); if (isUuid(oo.id)) queueEvent('order_update', {id:oo.id, lines:oo.lines, note:oo.note, pay:oo.pay}); toast('Order #' + orderLabel(oo) + ' updated'); if (d.pr){ S.slip = oo.id; S.slipType = d.pr; } }
         S.cart = []; S.note = ''; S.pay = undefined; S.review = false; S.editing = null; S.cartOpen = false; S.tab = 'orders'; S.filter = 'pending';
         break;
       }
@@ -1039,7 +1058,7 @@ document.addEventListener('click', function(e){
       db.counter++;
       var no0 = {id:uuid(), no:db.counter, dev:sync.dev || '', t:Date.now(), lines:S.cart.map(function(l){ return {cat:l.cat, name:l.name, size:l.size, price:l.price, qty:l.qty}; }), note:S.note.trim(), pay:S.pay || '', delivered:false, entered:false};
       db.orders.push(no0); saveOrders(); ui.lastPay = no0.pay; saveUi(); queueEvent('order', {id:no0.id, no:no0.no, dev:no0.dev, day:today(), t:no0.t, lines:no0.lines, note:no0.note, pay:no0.pay});
-      toast('Order #' + orderLabel(no0) + ' saved'); if (ui.autoslip) S.slip = no0.id;
+      toast('Order #' + orderLabel(no0) + ' saved'); if (d.pr){ S.slip = no0.id; S.slipType = d.pr; } else if (ui.autoslip){ S.slip = no0.id; S.slipType = 'bill'; }
       S.cart = []; S.note = ''; S.pay = undefined; S.review = false; S.cat = menu[0].id;
       break;
     case 'filter': S.filter = d.id; S.clearAsk = false; break;
