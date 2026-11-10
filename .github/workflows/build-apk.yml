@@ -34,6 +34,9 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      - name: Apply Hollywood icon and splash screen
+        run: cp -r android-res/. android/app/src/main/res/
+
       - name: Build debug APK
         run: |
           cd android
