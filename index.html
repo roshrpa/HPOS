@@ -474,8 +474,7 @@ function vHeader(){
   return '<header class="top"><div class="logo">HOLLY<br>WOOD</div><div class="brand">Hollywood Ice Creams<small>Car order pad</small></div><button id="syncpill" class="syncpill off" data-act="syncnow">Not connected</button><nav class="tabs">'
     + tab('new','New order', S.cart.length ? '<span class="badge">'+totalQty(S.cart)+'</span>' : '')
     + tab('orders','Orders', n ? '<span class="badge">'+n+'</span>' : '')
-    + tab('totals','To enter', ne ? '<span class="badge">'+ne+'</span>' : '')
-    + '<button class="navbtn" data-act="opennav" aria-label="More" aria-current="'+(['reports','menu','settings'].indexOf(S.tab) >= 0)+'">\u2630' + (['reports','menu','settings'].indexOf(S.tab) >= 0 ? '<span>'+({reports:'Reports',menu:'Menu',settings:'Settings'})[S.tab]+'</span>' : '') + '</button>'
+    + '<button class="navbtn" data-act="opennav" aria-label="More" aria-current="'+(['totals','reports','menu','settings'].indexOf(S.tab) >= 0)+'">\u2630' + (['totals','reports','menu','settings'].indexOf(S.tab) >= 0 ? '<span>'+({totals:'To enter',reports:'Reports',menu:'Menu',settings:'Settings'})[S.tab]+'</span>' : (ne ? '<span class="badge">'+ne+'</span>' : '')) + '</button>'
     + '</nav></header>';
 }
 
@@ -488,7 +487,7 @@ function railBtn(c, pressed, act){
 function vDrawer(){
   function it(id, ico, label){ return '<button class="ditem" data-act="gopage" data-v="'+id+'" aria-current="'+(S.tab===id)+'"><i>'+ico+'</i>'+label+'</button>'; }
   return '<div class="drawerscrim" data-act="closenav"><div class="drawer" role="dialog" aria-label="Navigation"><h3>More</h3>'
-    + it('reports','\ud83d\udcca','Reports') + it('menu','\ud83c\udf66','Edit menu') + it('settings','\u2699\ufe0f','Settings')
+    + it('totals','\ud83d\udcdd','To enter in main system'+(toEnter().length ? ' <span class="badge">'+toEnter().length+'</span>' : '')) + it('reports','\ud83d\udcca','Reports') + it('menu','\ud83c\udf66','Edit menu') + it('settings','\u2699\ufe0f','Settings')
     + '<p class="dsoon">More pages will appear here as we add them.</p></div></div>';
 }
 
