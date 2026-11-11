@@ -453,7 +453,7 @@ var K_ORD='hollywood_orders_v2', K_MENU='hollywood_menu_v2', K_PIN='hollywood_pi
 var mem = {};
 function lsGet(k){ try { var r = localStorage.getItem(k); if (r !== null) return r; } catch(e){} return mem[k] || null; }
 function lsSet(k, v){ mem[k] = v; try { localStorage.setItem(k, v); return true; } catch(e){ return false; } }
-var ui = (function(){ var d = {img:'small', cols:0}; try { var o = JSON.parse(lsGet(K_UI) || '{}'); if (o.img) d.img = o.img; if (o.cols != null) d.cols = +o.cols; d.autoslip = !!o.autoslip; d.printer = !!(o.printer || o.direct); d.manual = o.manual !== false; d.catlist = o.catlist !== false; } catch(e){} return d; })();
+var ui = (function(){ var d = {img:'small', cols:5, colsV:2}; try { var o = JSON.parse(lsGet(K_UI) || '{}'); if (o.img) d.img = o.img; if (o.cols != null && o.colsV === 2) d.cols = +o.cols; d.autoslip = !!o.autoslip; d.printer = !!(o.printer || o.direct); d.manual = o.manual !== false; d.catlist = o.catlist !== false; } catch(e){} return d; })();
 ui.shop = (function(){ var d = {name:'Hollywood Ice Creams', addr:'', tel:'056 900 4121 / 07 236 1564', insta:'@hollywoodicecreams_ae', trn:'', vat:false, rate:5}; try { var o = JSON.parse(lsGet(K_UI) || '{}').shop || {}; for (var k in o) d[k] = o[k]; } catch(e){} return d; })();
 function vatOf(total){ var r = +ui.shop.rate || 0; return ui.shop.vat && r > 0 ? total * r / (100 + r) : 0; }
 function saveUi(){ lsSet(K_UI, JSON.stringify(ui)); }
